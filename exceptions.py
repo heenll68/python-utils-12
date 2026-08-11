@@ -1,34 +1,34 @@
 class CustomError(Exception):
-    """Base class for other exceptions."""
+    """Base class for custom exceptions."""
     pass
 
-class ValueTooSmallError(CustomError):
-    """Raised when the input value is too small."""
-    def __init__(self, message="Value is too small"):  
+class ValidationError(CustomError):
+    """Raised when validation fails."""
+    def __init__(self, message):
         self.message = message
         super().__init__(self.message)
 
-class ValueTooLargeError(CustomError):
-    """Raised when the input value is too large."""
-    def __init__(self, message="Value is too large"):  
-        self.message = message
+class NotFoundError(CustomError):
+    """Raised when a resource is not found."""
+    def __init__(self, resource):
+        self.resource = resource
+        self.message = f'{resource} not found'
         super().__init__(self.message)
 
-# Function to check the input value
-
-def check_value(value):
-    try:
-        if value < 10:
-            raise ValueTooSmallError()
-        elif value > 100:
-            raise ValueTooLargeError()
-        else:
-            return "Value is within the acceptable range!"
-    except CustomError as e:
-        return str(e)
+class PermissionError(CustomError):
+    """Raised when permission is denied."""
+    def __init__(self, action):
+        self.action = action
+        self.message = f'Permission denied for action: {action}'
+        super().__init__(self.message)
 
 # Example usage
 if __name__ == '__main__':
-    print(check_value(5))   # Value is too small
-    print(check_value(150)) # Value is too large
-    print(check_value(50))  # Value is within the acceptable range!
+    try:
+        raise ValidationError('Input data is invalid')
+    except ValidationError as e:
+        print(e)  # Output: Input data is invalid
+    try:
+        raise NotFoundError('User')
+    except NotFoundError as e:
+        print(e)  # Output: User not found
