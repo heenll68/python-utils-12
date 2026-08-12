@@ -1,42 +1,40 @@
-import os
-import json
-import logging
-from typing import Any, Dict
+from pynput.mouse import Controller, Listener
+import time
 
-logging.basicConfig(level=logging.INFO)
+class AutoClicker:
+    """Class to handle auto-clicking operations."""
+    def __init__(self, interval: float):
+        """Initialize the auto-clicker with a specified interval.
+        
+        Args:
+            interval (float): Time in seconds between clicks.
+        """
+        self.interval = interval
+        self.mouse = Controller()
 
+    def click(self):
+        """Perform a mouse click."""
+        self.mouse.click(Button.left)
 
-def load_json_file(filepath: str) -> Dict[str, Any]:
-    """Load JSON file from a given filepath."""
-    if not os.path.exists(filepath):
-        logging.warning(f"File not found: {filepath}")
-        return {}
-    with open(filepath, 'r') as file:
-        try:
-            data = json.load(file)
-            return data
-        except json.JSONDecodeError as e:
-            logging.error(f"Error decoding JSON from {filepath}: {e}")
-            return {}
+    def start(self):
+        """Start the auto-clicking process."""
+        with Listener(on_click=self.on_click) as listener:
+            listener.join()
 
+    def on_click(self, x: int, y: int, button, pressed: bool):
+        """Handle mouse click events.
+        
+        Args:
+            x (int): The x-coordinate of the mouse click.
+            y (int): The y-coordinate of the mouse click.
+            button: The button that was pressed.
+            pressed (bool): Whether the button was pressed or released.
+        """
+        if pressed:
+            print(f'Clicking at ({x}, {y})')
+            self.click()
+            time.sleep(self.interval)
 
-def save_json_file(filepath: str, data: Dict[str, Any]) -> None:
-    """Save a dictionary as a JSON file to the given filepath."""
-    with open(filepath, 'w') as file:
-        json.dump(data, file, indent=4)
-        logging.info(f"Data saved to {filepath}")
-
-
-def clean_directory(directory: str) -> None:
-    """Remove all files in the specified directory."""
-    if not os.path.isdir(directory):
-        logging.warning(f"Directory not found: {directory}")
-        return
-    for filename in os.listdir(directory):
-        file_path = os.path.join(directory, filename)
-        try:
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-                logging.info(f"Removed file: {file_path}")
-        except Exception as e:
-            logging.error(f"Error while removing {file_path}: {e}")
+if __name__ == '__main__':
+    autoclicker = AutoClicker(0.1)
+    autoclicker.start()
