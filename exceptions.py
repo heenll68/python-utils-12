@@ -1,34 +1,17 @@
-class CustomError(Exception):
-    """Base class for custom exceptions."""
+import time
+import requests
+
+class NetworkError(Exception):
     pass
 
-class ValidationError(CustomError):
-    """Raised when validation fails."""
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
 
-class NotFoundError(CustomError):
-    """Raised when a resource is not found."""
-    def __init__(self, resource):
-        self.resource = resource
-        self.message = f'{resource} not found'
-        super().__init__(self.message)
-
-class PermissionError(CustomError):
-    """Raised when permission is denied."""
-    def __init__(self, action):
-        self.action = action
-        self.message = f'Permission denied for action: {action}'
-        super().__init__(self.message)
-
-# Example usage
-if __name__ == '__main__':
-    try:
-        raise ValidationError('Input data is invalid')
-    except ValidationError as e:
-        print(e)  # Output: Input data is invalid
-    try:
-        raise NotFoundError('User')
-    except NotFoundError as e:
-        print(e)  # Output: User not found
+def retry_request(url, retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an error for HTTP error responses
+            return response.json()  # Return the JSON response
+        except requests.exceptions.RequestException as e:
+            print(f'Attempt {attempt + 1}/{retries} failed: {e}')
+            time.sleep(delay)  # Wait before the next attempt
+    raise NetworkError(f'Failed to fetch data from {url} after {retries} attempts')
