@@ -1,43 +1,30 @@
 import logging
-import os
+from logging.handlers import RotatingFileHandler
 
-class Logger:
-    def __init__(self, log_file='app.log'):
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.handler = logging.FileHandler(log_file)
-        self.handler.setLevel(logging.DEBUG)
-        self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.handler)
+# Configure logging settings
+LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+LOG_FILE = 'app.log'
+LOG_SIZE = 5 * 1024 * 1024  # 5 MB
+LOG_BACKUP_COUNT = 3
 
-    def log_info(self, message):
-        try:
-            self.logger.info(message)
-        except Exception as e:
-            print(f'Error logging info: {e}')  # prints to stdout
+# Set up logger
+logger = logging.getLogger('AutoClickerLogger')
+logger.setLevel(logging.DEBUG)
 
-    def log_warning(self, message):
-        try:
-            self.logger.warning(message)
-        except Exception as e:
-            print(f'Error logging warning: {e}')
+# Create a rotating file handler
+handler = RotatingFileHandler(LOG_FILE, maxBytes=LOG_SIZE, backupCount=LOG_BACKUP_COUNT)
+handler.setFormatter(logging.Formatter(LOG_FORMAT))
 
-    def log_error(self, message):
-        try:
-            self.logger.error(message)
-        except Exception as e:
-            print(f'Error logging error: {e}')
+# Add the handler to the logger
+logger.addHandler(handler)
 
-    def log_debug(self, message):
-        try:
-            self.logger.debug(message)
-        except Exception as e:
-            print(f'Error logging debug: {e}')
+# Example function to log messages
+def log_example():
+    logger.debug('This is a debug message')
+    logger.info('This is an info message')
+    logger.warning('This is a warning message')
+    logger.error('This is an error message')
+    logger.critical('This is a critical message')
 
-    def close(self):
-        try:
-            self.handler.close()
-            self.logger.removeHandler(self.handler)
-        except Exception as e:
-            print(f'Error closing logger: {e}')
+if __name__ == '__main__':
+    log_example()
