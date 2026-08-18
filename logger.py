@@ -1,30 +1,28 @@
 import logging
-from logging.handlers import RotatingFileHandler
 
-# Configure logging settings
-LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-LOG_FILE = 'app.log'
-LOG_SIZE = 5 * 1024 * 1024  # 5 MB
-LOG_BACKUP_COUNT = 3
+# Configure logger settings
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Set up logger
-logger = logging.getLogger('AutoClickerLogger')
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-# Create a rotating file handler
-handler = RotatingFileHandler(LOG_FILE, maxBytes=LOG_SIZE, backupCount=LOG_BACKUP_COUNT)
-handler.setFormatter(logging.Formatter(LOG_FORMAT))
+def log_click_event(click_data):
+    """Logs click event data to the console and file."""
+    if not isinstance(click_data, dict):
+        logger.error('Invalid click data format, must be a dictionary')
+        return
+    
+    try:
+        logger.info('Click event: %s', click_data)
+        with open('click_events.log', 'a') as log_file:
+            log_file.write(f'{click_data}\n')
+    except Exception as e:
+        logger.error('Failed to log click event: %s', e)
 
-# Add the handler to the logger
-logger.addHandler(handler)
+def log_error(message):
+    """Logs error messages to the console."""
+    logger.error(message)
 
-# Example function to log messages
-def log_example():
-    logger.debug('This is a debug message')
-    logger.info('This is an info message')
-    logger.warning('This is a warning message')
-    logger.error('This is an error message')
-    logger.critical('This is a critical message')
-
-if __name__ == '__main__':
-    log_example()
+def log_info(message):
+    """Logs informational messages to the console."""
+    logger.info(message)
