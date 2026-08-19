@@ -1,34 +1,36 @@
 import time
-import threading
+import requests
 
-class AutoClicker:
-    def __init__(self, delay=1.0):
-        self.is_running = False
-        self.delay = delay
-        self.click_thread = None
+class NetworkOperationError(Exception):
+    pass
 
-    def start(self):
-        if not self.is_running:
-            self.is_running = True
-            self.click_thread = threading.Thread(target=self._click)
-            self.click_thread.start()
+def retry_on_failure(max_retries=3, backoff_factor=2):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            attempts = 0
+            while attempts < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except NetworkOperationError:
+                    attempts += 1
+                    wait_time = backoff_factor ** attempts
+                    print(f'Retrying {func.__name__}: attempt {attempts} in {wait_time}s')
+                    time.sleep(wait_time)
+            raise NetworkOperationError(f'Max retries exceeded for {func.__name__}')
+        return wrapper
+    return decorator
 
-    def stop(self):
-        self.is_running = False
-        if self.click_thread is not None:
-            self.click_thread.join()
-
-    def _click(self):
-        while self.is_running:
-            self.perform_click()
-            time.sleep(self.delay)
-
-    @staticmethod
-    def perform_click():
-        print("Click!")  # Simulate a mouse click
+@retry_on_failure(max_retries=5, backoff_factor=2)
+def fetch_data(url):
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise NetworkOperationError(f'Error fetching data: {response.status_code}')
+    return response.json()  
 
 if __name__ == '__main__':
-    autoclicker = AutoClicker(delay=0.5)  # Adjust delay as needed
-    autoclicker.start()
-    time.sleep(5)  # Run for 5 seconds
-    autoclicker.stop()
+    url = 'https://api.example.com/data'
+    try:
+        data = fetch_data(url)
+        print(data)
+    except NetworkOperationError as e:
+        print(e)
