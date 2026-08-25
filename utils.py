@@ -1,36 +1,45 @@
 import time
-import requests
+import random
+from typing import Tuple, List
 
-class NetworkOperationError(Exception):
-    pass
+def random_delay(min_seconds: float, max_seconds: float) -> float:
+    """Return a random float delay between the given min and max."""
+    if min_seconds < 0 or max_seconds < 0:
+        raise ValueError("Delays must be non-negative")
+    return random.uniform(min_seconds, max_seconds)
 
-def retry_on_failure(max_retries=3, backoff_factor=2):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            attempts = 0
-            while attempts < max_retries:
-                try:
-                    return func(*args, **kwargs)
-                except NetworkOperationError:
-                    attempts += 1
-                    wait_time = backoff_factor ** attempts
-                    print(f'Retrying {func.__name__}: attempt {attempts} in {wait_time}s')
-                    time.sleep(wait_time)
-            raise NetworkOperationError(f'Max retries exceeded for {func.__name__}')
-        return wrapper
-    return decorator
+def sleep_jitter(base: float, percent: float = 0.2) -> None:
+    """Sleep base time with random jitter percentage."""
+    variation = base * random.uniform(-percent, percent)
+    time.sleep(max(0.001, base + variation))
 
-@retry_on_failure(max_retries=5, backoff_factor=2)
-def fetch_data(url):
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise NetworkOperationError(f'Error fetching data: {response.status_code}')
-    return response.json()  
+def random_coordinates(x_min: int, x_max: int, y_min: int, y_max: int) -> Tuple[int, int]:
+    """Provide random x y within specified rectangular area."""
+    x = random.randint(x_min, x_max)
+    y = random.randint(y_min, y_max)
+    return x, y
 
-if __name__ == '__main__':
-    url = 'https://api.example.com/data'
-    try:
-        data = fetch_data(url)
-        print(data)
-    except NetworkOperationError as e:
-        print(e)
+def click_intervals(total_clicks: int, avg_interval: float) -> List[float]:
+    """Generate list of intervals for a number of clicks."""
+    intervals = []
+    for _ in range(total_clicks - 1):
+        jittered = avg_interval * random.uniform(0.7, 1.3)
+        intervals.append(max(0.05, jittered))
+    return intervals
+
+def execute_autoclick(clicks: int, delay: float) -> None:
+    """Run simulated autoclick sequence using the helpers."""
+    if clicks < 1:
+        return
+    print("Starting autoclick sequence")
+    for i in range(clicks):
+        print(f"Click number {i + 1}")
+        sleep_jitter(delay)
+    print("Sequence completed")
+
+if __name__ == "__main__":
+    print(random_delay(0.1, 0.3))
+    sleep_jitter(0.5)
+    print(random_coordinates(0, 1920, 0, 1080))
+    print(click_intervals(5, 0.5))
+    execute_autoclick(3, 0.2)
