@@ -1,45 +1,36 @@
+from __future__ import annotations
+
 import time
+
 import random
-from typing import Tuple, List
 
-def random_delay(min_seconds: float, max_seconds: float) -> float:
-    """Return a random float delay between the given min and max."""
-    if min_seconds < 0 or max_seconds < 0:
-        raise ValueError("Delays must be non-negative")
-    return random.uniform(min_seconds, max_seconds)
+import pyautogui
 
-def sleep_jitter(base: float, percent: float = 0.2) -> None:
-    """Sleep base time with random jitter percentage."""
-    variation = base * random.uniform(-percent, percent)
-    time.sleep(max(0.001, base + variation))
+def get_random_delay(min_delay: float, max_delay: float) -> float:
+    """Return random delay between min and max seconds."""
+    return random.uniform(min_delay, max_delay)
 
-def random_coordinates(x_min: int, x_max: int, y_min: int, y_max: int) -> Tuple[int, int]:
-    """Provide random x y within specified rectangular area."""
-    x = random.randint(x_min, x_max)
-    y = random.randint(y_min, y_max)
-    return x, y
+def simulate_click(x: int, y: int, button: str = 'left') -> None:
+    """Move to position and click the mouse button."""
+    pyautogui.moveTo(x, y, duration=0.1)
+    if button == 'left':
+        pyautogui.click(x, y)
+    elif button == 'right':
+        pyautogui.click(x, y, button='right')
 
-def click_intervals(total_clicks: int, avg_interval: float) -> List[float]:
-    """Generate list of intervals for a number of clicks."""
-    intervals = []
-    for _ in range(total_clicks - 1):
-        jittered = avg_interval * random.uniform(0.7, 1.3)
-        intervals.append(max(0.05, jittered))
-    return intervals
+def add_position_jitter(x: int, y: int, amount: int = 3) -> tuple[int, int]:
+    """Add small random offset to coordinates."""
+    new_x = x + random.randint(-amount, amount)
+    new_y = y + random.randint(-amount, amount)
+    return new_x, new_y
 
-def execute_autoclick(clicks: int, delay: float) -> None:
-    """Run simulated autoclick sequence using the helpers."""
-    if clicks < 1:
-        return
-    print("Starting autoclick sequence")
-    for i in range(clicks):
-        print(f"Click number {i + 1}")
-        sleep_jitter(delay)
-    print("Sequence completed")
+def human_click_sequence(x: int, y: int, num_clicks: int = 1) -> None:
+    """Perform a sequence of clicks with human-like delays."""
+    for _ in range(num_clicks):
+        jitter_x, jitter_y = add_position_jitter(x, y)
+        simulate_click(jitter_x, jitter_y)
+        time.sleep(get_random_delay(0.05, 0.15))
 
-if __name__ == "__main__":
-    print(random_delay(0.1, 0.3))
-    sleep_jitter(0.5)
-    print(random_coordinates(0, 1920, 0, 1080))
-    print(click_intervals(5, 0.5))
-    execute_autoclick(3, 0.2)
+def validate_coordinates(x: int, y: int) -> bool:
+    """Check if coordinates are valid positive integers."""
+    return isinstance(x, int) and isinstance(y, int) and x >= 0 and y >= 0
