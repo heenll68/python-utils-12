@@ -1,31 +1,35 @@
 import json
+import os
 
-class Config:
-    def __init__(self, config_file):
-        self.config_file = config_file
-        self.settings = self.load_config()
+DEFAULT_CONFIG = {
+    "interval": 0.1,
+    "button": "left",
+    "hotkey": "f6",
+    "repeat": True
+}
 
-    def load_config(self):
-        try:
-            with open(self.config_file, 'r') as file:
-                return json.load(file)
-        except FileNotFoundError:
-            return {}
-        except json.JSONDecodeError:
-            return {}
+def load_config(filepath="settings.json"):
+    """
+    Loads configuration from JSON file or returns defaults
+    if the file does not exist or is malformed.
+    """
+    if not os.path.exists(filepath):
+        return DEFAULT_CONFIG
 
-    def get(self, key, default=None):
-        return self.settings.get(key, default)
+    try:
+        with open(filepath, "r") as f:
+            user_config = json.load(f)
+            # Merge user config with defaults to ensure keys exist
+            return {**DEFAULT_CONFIG, **user_config}
+    except (json.JSONDecodeError, IOError):
+        return DEFAULT_CONFIG
 
-    def set(self, key, value):
-        self.settings[key] = value
-        self.save_config()
-
-    def save_config(self):
-        with open(self.config_file, 'w') as file:
-            json.dump(self.settings, file, indent=4)  
-
-# Example usage
-# config = Config('settings.json')
-# config.set('click_delay', 0.1)
-# print(config.get('click_delay', 0.2))
+def save_config(config, filepath="settings.json"):
+    """
+    Persists configuration dictionary to a JSON file.
+    """
+    try:
+        with open(filepath, "w") as f:
+            json.dump(config, f, indent=4)
+    except IOError as e:
+        print(f"Failed to save configuration: {e}")
