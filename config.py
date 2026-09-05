@@ -1,35 +1,48 @@
 import json
-import os
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Dict
 
-DEFAULT_CONFIG = {
-    "interval": 0.1,
-    "button": "left",
-    "hotkey": "f6",
-    "repeat": True
-}
 
-def load_config(filepath="settings.json"):
-    """
-    Loads configuration from JSON file or returns defaults
-    if the file does not exist or is malformed.
-    """
-    if not os.path.exists(filepath):
-        return DEFAULT_CONFIG
+@dataclass
+class AutoClickerConfig:
+    """Configuration settings for the autoclicker application."""
 
-    try:
-        with open(filepath, "r") as f:
-            user_config = json.load(f)
-            # Merge user config with defaults to ensure keys exist
-            return {**DEFAULT_CONFIG, **user_config}
-    except (json.JSONDecodeError, IOError):
-        return DEFAULT_CONFIG
+    interval: float = 0.1
+    button: str = "left"
+    clicks: int = 0
+    hotkey: str = "f8"
+    random_delay_range: float = 0.02
 
-def save_config(config, filepath="settings.json"):
-    """
-    Persists configuration dictionary to a JSON file.
-    """
-    try:
-        with open(filepath, "w") as f:
-            json.dump(config, f, indent=4)
-    except IOError as e:
-        print(f"Failed to save configuration: {e}")
+    def validate(self) -> bool:
+        """Validate configuration values for safe execution."""
+        if self.interval <= 0:
+            raise ValueError("Interval must be a positive number.")
+        if self.button not in ("left", "right", "middle"):
+            raise ValueError(
+                f"Invalid mouse button: {self.button}. Must be 'left', 'right', or 'middle'."
+            )
+        if self.clicks < 0:
+            raise ValueError("Clicks count cannot be negative.")
+        if self.random_delay_range < 0:
+            raise ValueError("Random delay range cannot be negative.")
+        return True
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration options to a dictionary."""
+        return asdict(self)
+
+    def save_to_file(self, file_path: Path) -> None:
+        """Save configuration parameters to a JSON file."""
+        self.validate()
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=4)
+
+    @classmethod
+    def load_from_file(cls, file_path: Path) -> "AutoClickerConfig":
+        """Load configuration parameters from a JSON file."""
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        config = cls(**data)
+        config.validate()
+        return config
