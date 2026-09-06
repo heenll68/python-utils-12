@@ -1,33 +1,32 @@
-import time
-import threading
+import json
+import os
+from typing import Dict, Any
 
-class AutoClicker:
-    def __init__(self, interval=0.1):
-        self.interval = interval  # Time between clicks in seconds
-        self.running = False
+def save_click_config(filepath: str, data: Dict[str, Any]) -> bool:
+    """Persists autoclicker configuration to a local JSON file."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except (IOError, TypeError) as e:
+        print(f"Storage error: {e}")
+        return False
 
-    def start(self):
-        if not self.running:
-            self.running = True
-            self.click_thread = threading.Thread(target=self._click_loop)
-            self.click_thread.start()
+def load_click_config(filepath: str) -> Dict[str, Any]:
+    """Loads autoclicker settings from a specified path."""
+    if not os.path.exists(filepath):
+        return {}
+    
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        return {}
 
-    def stop(self):
-        self.running = False
-        if hasattr(self, 'click_thread'):
-            self.click_thread.join()  # Wait for the thread to finish
+def validate_interval(interval: float) -> float:
+    """Ensures click interval remains within logical bounds."""
+    return max(0.01, min(interval, 60.0))
 
-    def _click_loop(self):
-        while self.running:
-            self.perform_click()
-            time.sleep(self.interval)  # Wait for the specified interval
-
-    def perform_click(self):
-        # Simulates a mouse click action (to be implemented)
-        print('Click!')  # Placeholder for actual click action
-
-if __name__ == '__main__':
-    autoclicker = AutoClicker(interval=0.5)  # Create an instance with a 0.5s interval
-    autoclicker.start()  # Start the autoclicker
-    time.sleep(5)  # Let it click for 5 seconds
-    autoclicker.stop()  # Stop the autoclicker
+def format_coords(x: int, y: int) -> Dict[str, int]:
+    """Encapsulates coordinate data for clicker input."""
+    return {"x": int(x), "y": int(y)}
