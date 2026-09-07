@@ -1,50 +1,40 @@
 import time
-import sys
+import pyautogui
+from typing import Tuple
 
-def run_autoclicker(clicks: int = 100, interval: float = 0.1, pos_x: int = None, pos_y: int = None):
-    """Core autoclicker function with comprehensive error handling."""
+class AutoClicker:
+    """Handles automated clicking sequences with configurable timing."""
+    
+    def __init__(self, interval: float = 0.1):
+        self.interval = interval
+        self.running = False
 
-    # Validate inputs for edge cases
-    if not isinstance(clicks, int) or clicks < 1:
-        raise ValueError("Number of clicks must be a positive integer")
-    if not isinstance(interval, (int, float)) or interval <= 0:
-        raise ValueError("Interval must be a positive number")
-    if pos_x is not None:
-        if not isinstance(pos_x, int) or pos_x < 0:
-            raise ValueError("X position must be a non-negative integer")
-    if pos_y is not None:
-        if not isinstance(pos_y, int) or pos_y < 0:
-            raise ValueError("Y position must be a non-negative integer")
+    def start_clicking(self, iterations: int = 0) -> None:
+        """Executes clicks until stopped or iteration limit met."""
+        self.running = True
+        count = 0
+        try:
+            while self.running:
+                pyautogui.click()
+                time.sleep(self.interval)
+                count += 1
+                if iterations > 0 and count >= iterations:
+                    break
+        except KeyboardInterrupt:
+            self.stop_clicking()
 
-    click_counter = 0
+    def stop_clicking(self) -> None:
+        """Halts current click execution."""
+        self.running = False
 
-    try:
-        print(f"Autoclicker started: {clicks} clicks at {interval}s intervals")
-        for i in range(clicks):
-            try:
-                # Simulate performing the click
-                if pos_x is not None and pos_y is not None:
-                    print(f"Performing click {i + 1} at position ({pos_x}, {pos_y})")
-                else:
-                    print(f"Performing click {i + 1} at current cursor position")
-                # In a real implementation: pyautogui.click(x=pos_x, y=pos_y)
-                time.sleep(interval)
-                click_counter += 1
-            except Exception as click_error:
-                # Handle errors during individual clicks, e.g. permission or hardware issues
-                print(f"Error on click {i + 1}: {click_error}. Continuing...")
-                continue
-    except KeyboardInterrupt:
-        print("\nAutoclicker interrupted by user. Stopping gracefully.")
-    except Exception as e:
-        print(f"Unexpected error in autoclicker: {e}")
-    finally:
-        print(f"Autoclicker completed. Total successful clicks: {click_counter}")
+    def set_interval(self, seconds: float) -> None:
+        """Updates click frequency."""
+        self.interval = max(0.01, seconds)
+
+def get_mouse_position() -> Tuple[int, int]:
+    """Returns current screen coordinates."""
+    return pyautogui.position()
 
 if __name__ == "__main__":
-    try:
-        # Example usage with valid params
-        run_autoclicker(clicks=10, interval=0.05, pos_x=500, pos_y=300)
-    except ValueError as val_err:
-        print(f"Invalid configuration: {val_err}")
-        sys.exit(1)
+    clicker = AutoClicker(interval=0.5)
+    clicker.start_clicking(iterations=5)
