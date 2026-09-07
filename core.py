@@ -1,40 +1,46 @@
 import time
-import pyautogui
-from typing import Tuple
+import threading
+
+try:
+    from pynput.mouse import Button, Controller
+except ImportError:
+    # Fallback simulation for environments without pynput
+    class Button:
+        left = 'left'
+        right = 'right'
+    class Controller:
+        def click(self, button):
+            pass
 
 class AutoClicker:
-    """Handles automated clicking sequences with configurable timing."""
-    
-    def __init__(self, interval: float = 0.1):
-        self.interval = interval
+    """Thread-safe autoclicker engine with controlled delay."""
+    def __init__(self, delay: float = 0.1, button = Button.left):
+        self.delay = delay
+        self.button = button
         self.running = False
+        self.active = True
+        self.mouse = Controller()
+        self._thread = threading.Thread(target=self._click_loop, daemon=True)
+        self._thread.start()
 
-    def start_clicking(self, iterations: int = 0) -> None:
-        """Executes clicks until stopped or iteration limit met."""
+    def start_clicking(self):
+        """Enable the click generation."""
         self.running = True
-        count = 0
-        try:
-            while self.running:
-                pyautogui.click()
-                time.sleep(self.interval)
-                count += 1
-                if iterations > 0 and count >= iterations:
-                    break
-        except KeyboardInterrupt:
-            self.stop_clicking()
 
-    def stop_clicking(self) -> None:
-        """Halts current click execution."""
+    def pause_clicking(self):
+        """Temporarily halt click generation."""
         self.running = False
 
-    def set_interval(self, seconds: float) -> None:
-        """Updates click frequency."""
-        self.interval = max(0.01, seconds)
+    def stop_clicking(self):
+        """Permanently shut down the clicker thread."""
+        self.running = False
+        self.active = False
 
-def get_mouse_position() -> Tuple[int, int]:
-    """Returns current screen coordinates."""
-    return pyautogui.position()
-
-if __name__ == "__main__":
-    clicker = AutoClicker(interval=0.5)
-    clicker.start_clicking(iterations=5)
+    def _click_loop(self):
+        """Background loop execution for clicking."""
+        while self.active:
+            if self.running:
+                self.mouse.click(self.button)
+                time.sleep(self.delay)
+            else:
+                time.sleep(0.01)
