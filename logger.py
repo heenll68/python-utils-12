@@ -1,30 +1,40 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import json
+from datetime import datetime
+from pathlib import Path
 
-def setup_logger(name='autoclicker', log_file='app.log', level=logging.INFO):
-    """Configures a rotating file logger for the application."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+class ClickLogger:
+    """Handles persistent storage of click event logs."""
+    
+    def __init__(self, log_dir: str = "logs"):
+        self.log_path = Path(log_dir)
+        self.log_path.mkdir(exist_ok=True)
+        self.file_path = self.log_path / "click_history.jsonl"
+        
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+        self.logger = logging.getLogger("autoclicker")
 
-    # Prevent duplicate handlers if logger is re-initialized
-    if not logger.handlers:
-        # Format: timestamp - module - level - message
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    def log_event(self, action: str, coordinates: tuple) -> None:
+        """Appends a structured click event to the log file."""
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "action": action,
+            "x": coordinates[0],
+            "y": coordinates[1]
+        }
+        
+        try:
+            with open(self.file_path, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+            self.logger.info(f"Logged {action} at {coordinates}")
+        except IOError as e:
+            self.logger.error(f"Failed to write log: {e}")
 
-        # Rotation: 5MB file size, keep 3 backups
-        file_handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5 * 1024 * 1024, 
-            backupCount=3
-        )
-        file_handler.setFormatter(formatter)
-
-        # Stream handler for console output
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-
-        logger.addHandler(file_handler)
-        logger.addHandler(console_handler)
-
-    return logger
+    def get_recent_events(self, limit: int = 10) -> list:
+        """Retrieves the most recent click events."""
+        if not self.file_path.exists():
+            return []
+        
+        with open(self.file_path, "r") as f:
+            lines = f.readlines()
+            return [json.loads(line) for line in lines[-limit:]]
