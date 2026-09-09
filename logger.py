@@ -1,40 +1,38 @@
-import logging
 import json
+import os
 from datetime import datetime
-from pathlib import Path
 
 class ClickLogger:
-    """Handles persistent storage of click event logs."""
-    
-    def __init__(self, log_dir: str = "logs"):
-        self.log_path = Path(log_dir)
-        self.log_path.mkdir(exist_ok=True)
-        self.file_path = self.log_path / "click_history.jsonl"
-        
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-        self.logger = logging.getLogger("autoclicker")
+    """Handles persistent storage of click event sequences."""
+    def __init__(self, log_file: str = "click_data.json"):
+        self.log_file = log_file
 
-    def log_event(self, action: str, coordinates: tuple) -> None:
-        """Appends a structured click event to the log file."""
+    def save_event(self, x: int, y: int, button: str):
+        """Appends a click event to the log file."""
         entry = {
             "timestamp": datetime.now().isoformat(),
-            "action": action,
-            "x": coordinates[0],
-            "y": coordinates[1]
+            "x": x,
+            "y": y,
+            "button": button
         }
         
-        try:
-            with open(self.file_path, "a") as f:
-                f.write(json.dumps(entry) + "\n")
-            self.logger.info(f"Logged {action} at {coordinates}")
-        except IOError as e:
-            self.logger.error(f"Failed to write log: {e}")
-
-    def get_recent_events(self, limit: int = 10) -> list:
-        """Retrieves the most recent click events."""
-        if not self.file_path.exists():
-            return []
+        data = self._load_existing()
+        data.append(entry)
         
-        with open(self.file_path, "r") as f:
-            lines = f.readlines()
-            return [json.loads(line) for line in lines[-limit:]]
+        with open(self.log_file, "w") as f:
+            json.dump(data, f, indent=4)
+
+    def _load_existing(self) -> list:
+        """Reads current log data from disk."""
+        if not os.path.exists(self.log_file):
+            return []
+        try:
+            with open(self.log_file, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return []
+
+    def clear_logs(self):
+        """Deletes the log file if it exists."""
+        if os.path.exists(self.log_file):
+            os.remove(self.log_file)
