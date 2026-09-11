@@ -1,35 +1,39 @@
-import json
-import os
-from typing import Dict, Any
+import time
+import functools
+import logging
+from typing import Callable, Any
 
-def load_click_config(filepath: str) -> Dict[str, Any]:
-    """Loads autoclicker parameters from a JSON file."""
-    if not os.path.exists(filepath):
-        return {"interval": 0.1, "button": "left", "clicks": 1}
+logger = logging.getLogger(__name__)
 
-    try:
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {"interval": 0.1, "button": "left", "clicks": 1}
+def retry_network_op(max_attempts: int = 3, delay: float = 1.0):
+    """
+    Decorator for retrying network operations on failure.
+    
+    Args:
+        max_attempts: Maximum number of attempts before raising exception.
+        delay: Seconds to wait between attempts.
+    """
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            last_exception = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt} failed: {e}. Retrying...")
+                    if attempt < max_attempts:
+                        time.sleep(delay)
+            logger.error(f"Operation failed after {max_attempts} attempts.")
+            raise last_exception
+        return wrapper
+    return decorator
 
-def save_click_config(filepath: str, data: Dict[str, Any]) -> bool:
-    """Persists autoclicker settings to disk."""
-    try:
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
-
-def validate_interval(interval: float) -> float:
-    """Ensures click interval is within safe bounds."""
-    return max(0.01, min(interval, 60.0))
-
-def format_click_payload(x: int, y: int, button: str) -> Dict[str, Any]:
-    """Constructs structured data for click events."""
-    return {
-        "position": {"x": x, "y": y},
-        "button": button.lower(),
-        "timestamp": "placeholder"
-    }
+@retry_network_op(max_attempts=3, delay=2.0)
+def fetch_remote_config(url: str):
+    """
+    Example network operation placeholder to fetch autoclicker config.
+    """
+    # In real usage, this would wrap requests.get(url)
+    raise ConnectionError("Failed to connect to update server")
