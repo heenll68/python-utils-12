@@ -1,46 +1,42 @@
 import time
-import threading
-
-try:
-    from pynput.mouse import Button, Controller
-except ImportError:
-    # Fallback simulation for environments without pynput
-    class Button:
-        left = 'left'
-        right = 'right'
-    class Controller:
-        def click(self, button):
-            pass
+import pyautogui
+from typing import Tuple
 
 class AutoClicker:
-    """Thread-safe autoclicker engine with controlled delay."""
-    def __init__(self, delay: float = 0.1, button = Button.left):
-        self.delay = delay
-        self.button = button
-        self.running = False
-        self.active = True
-        self.mouse = Controller()
-        self._thread = threading.Thread(target=self._click_loop, daemon=True)
-        self._thread.start()
+    """High-performance autoclicker engine core."""
+    
+    def __init__(self, interval: float = 0.01):
+        self.interval = interval
+        self._running = False
+        # Pre-bind function to reduce lookup overhead in loops
+        self._click = pyautogui.click
 
-    def start_clicking(self):
-        """Enable the click generation."""
-        self.running = True
+    def set_interval(self, seconds: float):
+        self.interval = max(0.001, seconds)
 
-    def pause_clicking(self):
-        """Temporarily halt click generation."""
-        self.running = False
+    def start(self):
+        """Starts the click loop with performance optimizations."""
+        self._running = True
+        self._run_loop()
 
-    def stop_clicking(self):
-        """Permanently shut down the clicker thread."""
-        self.running = False
-        self.active = False
+    def stop(self):
+        self._running = False
 
-    def _click_loop(self):
-        """Background loop execution for clicking."""
-        while self.active:
-            if self.running:
-                self.mouse.click(self.button)
-                time.sleep(self.delay)
-            else:
-                time.sleep(0.01)
+    def _run_loop(self):
+        """Core execution loop with local caching."""
+        click_func = self._click
+        sleep_func = time.sleep
+        delay = self.interval
+        
+        # Local variables optimize loop performance by reducing attribute lookups
+        while self._running:
+            click_func()
+            if delay > 0:
+                sleep_func(delay)
+
+if __name__ == '__main__':
+    bot = AutoClicker(interval=0.05)
+    try:
+        bot.start()
+    except KeyboardInterrupt:
+        bot.stop()
