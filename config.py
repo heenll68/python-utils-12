@@ -1,38 +1,26 @@
-import json
 import os
 
-class ConfigError(Exception):
-    """Custom exception for configuration loading errors."""
-    pass
+class Config:
+    """Centralized configuration management for autoclicker"""
+    
+    DEFAULT_INTERVAL = 0.1
+    DEFAULT_BUTTON = 'left'
+    CONFIG_FILE = 'settings.json'
 
-def load_config(filepath):
-    """Safely load JSON config with fallback to defaults."""
-    defaults = {
-        "interval": 0.1,
-        "button": "left",
-        "hotkey": "f6"
-    }
+    def __init__(self):
+        self.interval = float(os.getenv('CLICK_INTERVAL', self.DEFAULT_INTERVAL))
+        self.button = os.getenv('CLICK_BUTTON', self.DEFAULT_BUTTON)
+        self.is_running = False
 
-    if not os.path.exists(filepath):
-        return defaults
+    def update_settings(self, new_interval: float, new_button: str):
+        """Update runtime click configuration"""
+        if new_interval > 0:
+            self.interval = new_interval
+        if new_button in ['left', 'right', 'middle']:
+            self.button = new_button
 
-    try:
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            
-            # Validate required fields
-            if not isinstance(data.get("interval"), (int, float)) or data["interval"] < 0:
-                raise ConfigError("Invalid interval: must be non-negative number")
-                
-            return {**defaults, **data}
-    except (json.JSONDecodeError, PermissionError, ConfigError) as e:
-        print(f"Config error: {e}. Using default values.")
-        return defaults
+    def __repr__(self):
+        return f"Config(interval={self.interval}, button='{self.button}')"
 
-def save_config(filepath, config_data):
-    """Atomic-like save attempt for user settings."""
-    try:
-        with open(filepath, 'w') as f:
-            json.dump(config_data, f, indent=4)
-    except (IOError, TypeError) as e:
-        print(f"Failed to write config: {e}")
+# Global config instance for easy access across modules
+app_config = Config()
