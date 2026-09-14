@@ -1,30 +1,34 @@
-MAX_CLICKS = 1000
-MIN_CLICKS = 1
-DEFAULT_DELAY = 0.1
-CLICK_BUTTON = 'left'
-CLICK_PATTERN = {'type': CLICK_BUTTON, 'count': MAX_CLICKS}
+from typing import Final, Dict, Any
 
-# Error messages
-ERROR_NO_CLICKS = 'At least one click must be specified'
-ERROR_DELAY_TOO_SHORT = 'Delay must be greater than zero'
+# Default click interval in seconds
+DEFAULT_INTERVAL: Final[float] = 0.1
 
-# Settings
-DEFAULT_SETTINGS = {
-    'clicks': 100,
-    'delay': DEFAULT_DELAY,
-    'button': CLICK_BUTTON
+# Mouse button identifiers
+LEFT_BUTTON: Final[str] = "left"
+RIGHT_BUTTON: Final[str] = "right"
+MIDDLE_BUTTON: Final[str] = "middle"
+
+# Configuration key mappings
+CONFIG_KEYS: Final[Dict[str, Any]] = {
+    "interval": float,
+    "button": str,
+    "iterations": int,
+    "toggle_key": str
 }
 
-# Configuration bounds
-DELAY_BOUNDS = (0.01, 5.0)
+# Max click rate limit to prevent system freezing
+MAX_CLICK_RATE: Final[int] = 1000
 
-# Operating system
-IS_WINDOWS = True if os.name == 'nt' else False
-IS_MAC = True if os.uname().sysname == 'Darwin' else False
-IS_LINUX = True if os.name == 'posix' and not IS_MAC else False
+# Error and status messages
+STATUS_READY: Final[str] = "autoclicker system initialized"
+STATUS_RUNNING: Final[str] = "click sequence active"
+STATUS_STOPPED: Final[str] = "process terminated by user"
 
-# Click pattern
-CLICK_PATTERN = {
-    'button': CLICK_BUTTON,
-    'delay_range': DELAY_BOUNDS
-}
+def get_default_config() -> Dict[str, Any]:
+    """Returns the default configuration dictionary for the application."""
+    return {
+        "interval": DEFAULT_INTERVAL,
+        "button": LEFT_BUTTON,
+        "iterations": -1,
+        "toggle_key": "f6"
+    }
