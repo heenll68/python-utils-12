@@ -1,26 +1,37 @@
+import json
 import os
+from typing import Any, Dict
 
-class Config:
-    """Centralized configuration management for autoclicker"""
+DEFAULT_CONFIG = {
+    "interval": 0.1,
+    "button": "left",
+    "max_clicks": 1000,
+    "hotkey": "f6"
+}
+
+def load_config(path: str = "config.json") -> Dict[str, Any]:
+    """Loads configuration from disk with fallback to defaults."""
+    config = DEFAULT_CONFIG.copy()
     
-    DEFAULT_INTERVAL = 0.1
-    DEFAULT_BUTTON = 'left'
-    CONFIG_FILE = 'settings.json'
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                user_config = json.load(f)
+                config.update(user_config)
+        except (json.JSONDecodeError, IOError):
+            pass
+            
+    return config
 
-    def __init__(self):
-        self.interval = float(os.getenv('CLICK_INTERVAL', self.DEFAULT_INTERVAL))
-        self.button = os.getenv('CLICK_BUTTON', self.DEFAULT_BUTTON)
-        self.is_running = False
+def save_config(config: Dict[str, Any], path: str = "config.json") -> None:
+    """Persists current configuration to a JSON file."""
+    try:
+        with open(path, "w") as f:
+            json.dump(config, f, indent=4)
+    except IOError:
+        pass
 
-    def update_settings(self, new_interval: float, new_button: str):
-        """Update runtime click configuration"""
-        if new_interval > 0:
-            self.interval = new_interval
-        if new_button in ['left', 'right', 'middle']:
-            self.button = new_button
-
-    def __repr__(self):
-        return f"Config(interval={self.interval}, button='{self.button}')"
-
-# Global config instance for easy access across modules
-app_config = Config()
+if __name__ == "__main__":
+    # Example usage for verification
+    current_config = load_config()
+    print(f"Active config: {current_config}")
