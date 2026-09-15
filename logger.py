@@ -1,38 +1,34 @@
-import json
+import logging
 import os
-from datetime import datetime
+import sys
 
-class ClickLogger:
-    """Handles persistent storage of click event sequences."""
-    def __init__(self, log_file: str = "click_data.json"):
-        self.log_file = log_file
+def setup_logger(name: str = 'autoclicker', log_file: str = 'app.log') -> logging.Logger:
+    """Configures a robust logger with file rotation and edge case handling."""
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
 
-    def save_event(self, x: int, y: int, button: str):
-        """Appends a click event to the log file."""
-        entry = {
-            "timestamp": datetime.now().isoformat(),
-            "x": x,
-            "y": y,
-            "button": button
-        }
-        
-        data = self._load_existing()
-        data.append(entry)
-        
-        with open(self.log_file, "w") as f:
-            json.dump(data, f, indent=4)
-
-    def _load_existing(self) -> list:
-        """Reads current log data from disk."""
-        if not os.path.exists(self.log_file):
-            return []
+    # Ensure directory existence
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
         try:
-            with open(self.log_file, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            return []
+            os.makedirs(log_dir)
+        except OSError as e:
+            print(f"Critical error: Could not create log directory: {e}", file=sys.stderr)
+            return logger
 
-    def clear_logs(self):
-        """Deletes the log file if it exists."""
-        if os.path.exists(self.log_file):
-            os.remove(self.log_file)
+    # File handler with error resilience
+    try:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except (PermissionError, IOError) as e:
+        print(f"Warning: Logger file handler failed: {e}", file=sys.stderr)
+
+    # Console output for immediate feedback
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+
+    return logger
