@@ -1,39 +1,36 @@
 import time
-import functools
-import logging
-from typing import Callable, Any
+from functools import lru_cache
 
-logger = logging.getLogger(__name__)
+@lru_cache(maxsize=128)
+def get_normalized_coordinates(x: int, y: int, screen_width: int, screen_height: int) -> tuple:
+    """Cache coordinate normalization to reduce floating point math in hot loops."""
+    nx = max(0, min(1, x / screen_width))
+    ny = max(0, min(1, y / screen_height))
+    return (nx, ny)
 
-def retry_network_op(max_attempts: int = 3, delay: float = 1.0):
-    """
-    Decorator for retrying network operations on failure.
-    
-    Args:
-        max_attempts: Maximum number of attempts before raising exception.
-        delay: Seconds to wait between attempts.
-    """
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            last_exception = None
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt} failed: {e}. Retrying...")
-                    if attempt < max_attempts:
-                        time.sleep(delay)
-            logger.error(f"Operation failed after {max_attempts} attempts.")
-            raise last_exception
+def throttle_click_events(interval_ms: int):
+    """Decorator to prevent click spamming beyond specified frequency."""
+    last_called = [0.0]
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            now = time.perf_counter()
+            if (now - last_called[0]) >= (interval_ms / 1000.0):
+                last_called[0] = now
+                return func(*args, **kwargs)
         return wrapper
     return decorator
 
-@retry_network_op(max_attempts=3, delay=2.0)
-def fetch_remote_config(url: str):
-    """
-    Example network operation placeholder to fetch autoclicker config.
-    """
-    # In real usage, this would wrap requests.get(url)
-    raise ConnectionError("Failed to connect to update server")
+def calculate_dynamic_delay(base_delay: float, jitter: float) -> float:
+    """Simulate human timing variance to bypass basic detection."""
+    import random
+    return base_delay + random.uniform(-jitter, jitter)
+
+class ClickPerformanceTimer:
+    """Context manager for tracking click execution latency."""
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.elapsed = time.perf_counter() - self.start
