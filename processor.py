@@ -1,32 +1,36 @@
-import json
-import os
-from typing import Dict, Any
+import time
+import threading
+from typing import Callable
 
-def save_click_config(filepath: str, data: Dict[str, Any]) -> bool:
-    """Persists autoclicker configuration to a local JSON file."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except (IOError, TypeError) as e:
-        print(f"Storage error: {e}")
-        return False
+class ClickProcessor:
+    def __init__(self, interval: float):
+        self.interval = interval
+        self._running = False
+        self._thread = None
 
-def load_click_config(filepath: str) -> Dict[str, Any]:
-    """Loads autoclicker settings from a specified path."""
-    if not os.path.exists(filepath):
-        return {}
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        return {}
+    def _execute(self, action: Callable[[], None]) -> None:
+        # Pre-calculating drift and using high-precision sleep
+        next_call = time.perf_counter()
+        while self._running:
+            action()
+            next_call += self.interval
+            sleep_time = next_call - time.perf_counter()
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                # Reset if lagging behind to prevent event flood
+                next_call = time.perf_counter()
 
-def validate_interval(interval: float) -> float:
-    """Ensures click interval remains within logical bounds."""
-    return max(0.01, min(interval, 60.0))
+    def start(self, action: Callable[[], None]) -> None:
+        if not self._running:
+            self._running = True
+            self._thread = threading.Thread(target=self._execute, args=(action,), daemon=True)
+            self._thread.start()
 
-def format_coords(x: int, y: int) -> Dict[str, int]:
-    """Encapsulates coordinate data for clicker input."""
-    return {"x": int(x), "y": int(y)}
+    def stop(self) -> None:
+        self._running = False
+        if self._thread:
+            self._thread.join()
+
+    def update_interval(self, new_interval: float) -> None:
+        self.interval = max(0.001, new_interval)
