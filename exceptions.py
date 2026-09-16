@@ -1,53 +1,58 @@
-"""Custom exceptions for the autoclicker utility."""
+"""Custom exception classes for the autoclicker module."""
 
 
 class AutoclickerError(Exception):
-    """Base exception class for all autoclicker errors."""
+    """Base exception for all autoclicker-related errors."""
 
-    def __init__(self, message="An autoclicker error occurred"):
+    def __init__(self, message: str = "An autoclicker error occurred."):
+        super().__init__(message)
         self.message = message
-        super().__init__(self.message)
 
 
 class ConfigurationError(AutoclickerError):
-    """Raised when there is an invalid parameter configuration."""
+    """Raised when an invalid configuration is provided to the autoclicker."""
 
-    def __init__(self, parameter, value, message=None):
+    def __init__(self, parameter: str, value: any, message: str = None):
+        if not message:
+            message = (
+                f"Invalid value '{value}' provided for parameter '{parameter}'."
+            )
+        super().__init__(message)
         self.parameter = parameter
         self.value = value
-        error_msg = (
-            message
-            or f"Invalid value '{value}' for configuration parameter '{parameter}'"
+
+
+class InvalidHotkeyError(ConfigurationError):
+    """Raised when an invalid trigger/hotkey string is parsed."""
+
+    def __init__(self, hotkey: str):
+        super().__init__(
+            parameter="hotkey",
+            value=hotkey,
+            message=f"The specified key or key combination '{hotkey}' is invalid.",
         )
-        super().__init__(error_msg)
 
 
-class PermissionError(AutoclickerError):
-    """Raised when OS-level permissions are missing."""
+class ClickerStateError(AutoclickerError):
+    """Raised when trying to perform an action not allowed in the current state."""
 
-    def __init__(self, target_os, message=None):
-        self.target_os = target_os
-        error_msg = (
-            message or f"Insufficient permissions to control input on {target_os}"
+    def __init__(self, action: str, current_state: str):
+        message = (
+            f"Cannot perform action '{action}' while clicker is in state "
+            f"'{current_state}'."
         )
-        super().__init__(error_msg)
-
-
-class ControllerStateError(AutoclickerError):
-    """Raised when a state transition is invalid."""
-
-    def __init__(self, current_state, action):
-        self.current_state = current_state
+        super().__init__(message)
         self.action = action
-        error_msg = (
-            f"Cannot perform action '{action}' while in state '{current_state}'"
+        self.current_state = current_state
+
+
+class HookInitializationError(AutoclickerError):
+    """Raised when global input listeners or OS hooks fail to initialize."""
+
+    def __init__(self, backend: str, details: str):
+        message = (
+            f"Failed to initialize global listener hook using backend '{backend}': "
+            f"{details}"
         )
-        super().__init__(error_msg)
-
-
-class DeviceHookError(AutoclickerError):
-    """Raised when listener or clicker hooks fail to register."""
-
-    def __init__(self, device_type="mouse or keyboard"):
-        error_msg = f"Failed to bind hook to system {device_type}"
-        super().__init__(error_msg)
+        super().__init__(message)
+        self.backend = backend
