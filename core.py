@@ -1,47 +1,40 @@
 import time
 import threading
 from dataclasses import dataclass
-from typing import Callable, Optional
 
+@dataclass(slots=True)
+class ClickTask:
+    x: int
+    y: int
+    delay: float
 
-@dataclass
-class ClickConfig:
-    interval: float = 0.1
-    button: str = "left"
-    max_clicks: int = 0
-
-
-class AutoClicker:
-    """Core engine managing automated clicking loop in a background thread."""
-
-    def __init__(self, config: Optional[ClickConfig] = None) -> None:
-        self.config = config or ClickConfig()
+class ClickProcessor:
+    """Optimized click execution using slot-based data structures."""
+    def __init__(self):
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self.click_count = 0
+        self._lock = threading.Lock()
 
-    def _click_loop(self, click_func: Callable[[], None]) -> None:
-        while self._running:
-            click_func()
-            self.click_count += 1
-            if 0 < self.config.max_clicks <= self.click_count:
-                self._running = False
-                break
-            time.sleep(self.config.interval)
-
-    def start(self, click_func: Callable[[], None]) -> None:
-        """Start the autoclicker execution thread."""
-        if self._running:
-            return
+    def execute_sequence(self, tasks: list[ClickTask]):
+        """Executes click sequence with minimal object overhead."""
         self._running = True
-        self.click_count = 0
-        self._thread = threading.Thread(
-            target=self._click_loop, args=(click_func,), daemon=True
-        )
-        self._thread.start()
+        try:
+            for task in tasks:
+                if not self._running:
+                    break
+                self._perform_click(task.x, task.y)
+                time.sleep(task.delay)
+        finally:
+            self._running = False
 
-    def stop(self) -> None:
-        """Stop the autoclicker and wait for thread termination."""
-        self._running = False
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=1.0)
+    def _perform_click(self, x: int, y: int):
+        """Mock low-level click event."""
+        # Direct system call interface would go here
+        pass
+
+    def stop(self):
+        with self._lock:
+            self._running = False
+
+def get_optimized_processor() -> ClickProcessor:
+    """Factory for pre-configured click processor."""
+    return ClickProcessor()
