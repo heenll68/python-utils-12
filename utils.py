@@ -1,29 +1,46 @@
-import json
-import os
-from typing import Dict, Any
+import time
+import pyautogui
+from typing import Tuple, Optional
 
-def load_click_config(filepath: str) -> Dict[str, Any]:
-    """Reads click settings from a JSON configuration file."""
-    if not os.path.exists(filepath):
-        return {"interval": 0.1, "button": "left", "repeats": 0}
-    
-    with open(filepath, 'r') as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
+def perform_click(x: int, y: int, interval: float = 0.0) -> None:
+    """Executes a mouse click at the specified coordinates.
 
-def save_click_config(filepath: str, data: Dict[str, Any]) -> bool:
-    """Persists current autoclicker settings to disk."""
-    try:
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
+    Args:
+        x: Horizontal coordinate.
+        y: Vertical coordinate.
+        interval: Seconds to wait after clicking.
+    """
+    pyautogui.click(x, y)
+    if interval > 0:
+        time.sleep(interval)
 
-def validate_click_data(data: Dict[str, Any]) -> bool:
-    """Checks if click interval and repeats are valid."""
-    interval = data.get("interval", 0)
-    repeats = data.get("repeats", 0)
-    return isinstance(interval, (int, float)) and interval >= 0 and isinstance(repeats, int)
+def get_mouse_position() -> Tuple[int, int]:
+    """Retrieves the current mouse cursor location.
+
+    Returns:
+        A tuple containing (x, y) coordinates.
+    """
+    return pyautogui.position()
+
+def safe_move(x: int, y: int, duration: float = 0.25) -> None:
+    """Smoothly moves the mouse to target coordinates.
+
+    Args:
+        x: Destination x coordinate.
+        y: Destination y coordinate.
+        duration: Time taken to reach the destination.
+    """
+    pyautogui.moveTo(x, y, duration=duration)
+
+def validate_screen_bounds(x: int, y: int) -> bool:
+    """Checks if coordinates are within primary monitor limits.
+
+    Args:
+        x: Horizontal coordinate.
+        y: Vertical coordinate.
+
+    Returns:
+        True if coordinates are visible on screen.
+    """
+    width, height = pyautogui.size()
+    return 0 <= x <= width and 0 <= y <= height
