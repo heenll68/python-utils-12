@@ -1,41 +1,29 @@
 import time
 import pyautogui
-import logging
+import random
 
-logger = logging.getLogger(__name__)
+def perform_click(x, y, interval=0.1):
+    """Execute a mouse click at target coordinates."""
+    pyautogui.click(x, y)
+    time.sleep(interval)
 
-def execute_click(x: int, y: int, interval: float = 0.1):
-    """Performs a mouse click with input validation and safety checks."""
-    try:
-        if not isinstance(x, int) or not isinstance(y, int):
-            raise ValueError("Coordinates must be integers")
-        
-        screen_width, screen_height = pyautogui.size()
-        if not (0 <= x <= screen_width and 0 <= y <= screen_height):
-            raise ValueError(f"Coordinates ({x}, {y}) out of screen bounds")
-        
-        pyautogui.moveTo(x, y)
-        pyautogui.click()
-        time.sleep(interval)
-        
-    except pyautogui.FailSafeException:
-        logger.error("Fail-safe triggered by user. Stopping execution.")
-        raise
-    except ValueError as e:
-        logger.error(f"Input validation error: {e}")
-    except Exception as e:
-        logger.exception(f"Unexpected error during click execution: {e}")
+def perform_drag(start_x, start_y, end_x, end_y, duration=0.5):
+    """Execute a drag operation between two points."""
+    pyautogui.moveTo(start_x, start_y)
+    pyautogui.dragTo(end_x, end_y, duration=duration, button='left')
 
-def batch_click_processor(tasks: list):
-    """Processes a list of coordinate tuples for automated clicking."""
-    if not tasks:
-        logger.warning("Empty task list provided.")
-        return
+def wait_random(min_sec=0.5, max_sec=2.0):
+    """Introduce a random delay to mimic human behavior."""
+    delay = random.uniform(min_sec, max_sec)
+    time.sleep(delay)
 
-    for task in tasks:
-        try:
-            x, y = task
-            execute_click(x, y)
-        except (TypeError, ValueError):
-            logger.error(f"Skipping malformed task: {task}")
-            continue
+def get_screen_center():
+    """Calculate the center of the primary display."""
+    width, height = pyautogui.size()
+    return width // 2, height // 2
+
+def safe_exit_check():
+    """Verify emergency stop condition via mouse position."""
+    x, y = pyautogui.position()
+    if x == 0 and y == 0:
+        raise InterruptedError("Emergency stop triggered at screen corner")
