@@ -1,36 +1,41 @@
 import time
-import threading
-from typing import Callable
+import pyautogui
+import logging
 
-class ClickProcessor:
-    def __init__(self, interval: float):
-        self.interval = interval
-        self._running = False
-        self._thread = None
+logger = logging.getLogger(__name__)
 
-    def _execute(self, action: Callable[[], None]) -> None:
-        # Pre-calculating drift and using high-precision sleep
-        next_call = time.perf_counter()
-        while self._running:
-            action()
-            next_call += self.interval
-            sleep_time = next_call - time.perf_counter()
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-            else:
-                # Reset if lagging behind to prevent event flood
-                next_call = time.perf_counter()
+def execute_click(x: int, y: int, interval: float = 0.1):
+    """Performs a mouse click with input validation and safety checks."""
+    try:
+        if not isinstance(x, int) or not isinstance(y, int):
+            raise ValueError("Coordinates must be integers")
+        
+        screen_width, screen_height = pyautogui.size()
+        if not (0 <= x <= screen_width and 0 <= y <= screen_height):
+            raise ValueError(f"Coordinates ({x}, {y}) out of screen bounds")
+        
+        pyautogui.moveTo(x, y)
+        pyautogui.click()
+        time.sleep(interval)
+        
+    except pyautogui.FailSafeException:
+        logger.error("Fail-safe triggered by user. Stopping execution.")
+        raise
+    except ValueError as e:
+        logger.error(f"Input validation error: {e}")
+    except Exception as e:
+        logger.exception(f"Unexpected error during click execution: {e}")
 
-    def start(self, action: Callable[[], None]) -> None:
-        if not self._running:
-            self._running = True
-            self._thread = threading.Thread(target=self._execute, args=(action,), daemon=True)
-            self._thread.start()
+def batch_click_processor(tasks: list):
+    """Processes a list of coordinate tuples for automated clicking."""
+    if not tasks:
+        logger.warning("Empty task list provided.")
+        return
 
-    def stop(self) -> None:
-        self._running = False
-        if self._thread:
-            self._thread.join()
-
-    def update_interval(self, new_interval: float) -> None:
-        self.interval = max(0.001, new_interval)
+    for task in tasks:
+        try:
+            x, y = task
+            execute_click(x, y)
+        except (TypeError, ValueError):
+            logger.error(f"Skipping malformed task: {task}")
+            continue
