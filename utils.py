@@ -1,46 +1,31 @@
 import time
-import pyautogui
-from typing import Tuple, Optional
+import functools
+import logging
+from typing import Callable, Any
 
-def perform_click(x: int, y: int, interval: float = 0.0) -> None:
-    """Executes a mouse click at the specified coordinates.
+logger = logging.getLogger(__name__)
 
-    Args:
-        x: Horizontal coordinate.
-        y: Vertical coordinate.
-        interval: Seconds to wait after clicking.
-    """
-    pyautogui.click(x, y)
-    if interval > 0:
-        time.sleep(interval)
+def retry_network_operation(max_attempts: int = 3, delay: float = 1.0):
+    """Decorator to retry network-bound functions on failure."""
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt} failed: {e}. Retrying in {delay}s...")
+                    if attempt < max_attempts:
+                        time.sleep(delay)
+            logger.error(f"Function {func.__name__} failed after {max_attempts} attempts.")
+            raise last_exception
+        return wrapper
+    return decorator
 
-def get_mouse_position() -> Tuple[int, int]:
-    """Retrieves the current mouse cursor location.
-
-    Returns:
-        A tuple containing (x, y) coordinates.
-    """
-    return pyautogui.position()
-
-def safe_move(x: int, y: int, duration: float = 0.25) -> None:
-    """Smoothly moves the mouse to target coordinates.
-
-    Args:
-        x: Destination x coordinate.
-        y: Destination y coordinate.
-        duration: Time taken to reach the destination.
-    """
-    pyautogui.moveTo(x, y, duration=duration)
-
-def validate_screen_bounds(x: int, y: int) -> bool:
-    """Checks if coordinates are within primary monitor limits.
-
-    Args:
-        x: Horizontal coordinate.
-        y: Vertical coordinate.
-
-    Returns:
-        True if coordinates are visible on screen.
-    """
-    width, height = pyautogui.size()
-    return 0 <= x <= width and 0 <= y <= height
+@retry_network_operation(max_attempts=3, delay=2.0)
+def fetch_server_config(url: str):
+    """Simulated network request for autoclicker configuration."""
+    # Implementation logic for server sync would go here
+    pass
