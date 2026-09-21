@@ -1,34 +1,39 @@
-from typing import Final, Dict, Any
+import sys
+import platform
 
-# Default click interval in seconds
-DEFAULT_INTERVAL: Final[float] = 0.1
+# Optimized settings for low-latency click simulation
+# Cache system-specific constants to avoid repeated syscalls
 
-# Mouse button identifiers
-LEFT_BUTTON: Final[str] = "left"
-RIGHT_BUTTON: Final[str] = "right"
-MIDDLE_BUTTON: Final[str] = "middle"
+IS_WINDOWS = platform.system() == "Windows"
+IS_MACOS = platform.system() == "Darwin"
+IS_LINUX = platform.system() == "Linux"
 
-# Configuration key mappings
-CONFIG_KEYS: Final[Dict[str, Any]] = {
-    "interval": float,
-    "button": str,
-    "iterations": int,
-    "toggle_key": str
+# Performance thresholds for input handling
+MIN_CLICK_INTERVAL = 0.001  # 1ms minimum throttle
+MAX_CLICK_QUEUE_SIZE = 1000
+
+# Shared memory layout configuration for high-frequency updates
+BUFFER_SIZE = 4096
+HEARTBEAT_TIMEOUT = 5.0
+
+def get_performance_mode():
+    """Determine if high-performance threading is supported."""
+    # High performance requires threading/multiprocessing priority
+    # Only available on POSIX systems or with administrative privileges
+    return "high" if IS_LINUX or IS_MACOS else "standard"
+
+# Global flag for hardware acceleration status
+HW_ACCEL_ENABLED = True
+
+# Pre-computed key mapping constants
+KEY_MAP = {
+    "LEFT": 0x01,
+    "RIGHT": 0x02,
+    "MIDDLE": 0x04,
 }
 
-# Max click rate limit to prevent system freezing
-MAX_CLICK_RATE: Final[int] = 1000
-
-# Error and status messages
-STATUS_READY: Final[str] = "autoclicker system initialized"
-STATUS_RUNNING: Final[str] = "click sequence active"
-STATUS_STOPPED: Final[str] = "process terminated by user"
-
-def get_default_config() -> Dict[str, Any]:
-    """Returns the default configuration dictionary for the application."""
-    return {
-        "interval": DEFAULT_INTERVAL,
-        "button": LEFT_BUTTON,
-        "iterations": -1,
-        "toggle_key": "f6"
-    }
+__all__ = [
+    "IS_WINDOWS", "IS_MACOS", "IS_LINUX", 
+    "MIN_CLICK_INTERVAL", "MAX_CLICK_QUEUE_SIZE", 
+    "BUFFER_SIZE", "HW_ACCEL_ENABLED", "KEY_MAP"
+]
