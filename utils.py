@@ -1,31 +1,30 @@
 import time
-import functools
-import logging
-from typing import Callable, Any
+import pyautogui
+from typing import Tuple
 
-logger = logging.getLogger(__name__)
+def safe_click(x: int, y: int, interval: float = 0.1) -> None:
+    """Performs a mouse click at coordinates with a safety delay."""
+    pyautogui.moveTo(x, y)
+    time.sleep(interval)
+    pyautogui.click()
 
-def retry_network_operation(max_attempts: int = 3, delay: float = 1.0):
-    """Decorator to retry network-bound functions on failure."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt} failed: {e}. Retrying in {delay}s...")
-                    if attempt < max_attempts:
-                        time.sleep(delay)
-            logger.error(f"Function {func.__name__} failed after {max_attempts} attempts.")
-            raise last_exception
-        return wrapper
-    return decorator
+def get_mouse_position() -> Tuple[int, int]:
+    """Retrieves current screen coordinates of the mouse cursor."""
+    return pyautogui.position()
 
-@retry_network_operation(max_attempts=3, delay=2.0)
-def fetch_server_config(url: str):
-    """Simulated network request for autoclicker configuration."""
-    # Implementation logic for server sync would go here
-    pass
+def debounce_input(last_time: float, threshold: float = 0.5) -> bool:
+    """Checks if enough time has passed since last action."""
+    return (time.time() - last_time) > threshold
+
+def format_coordinates(x: int, y: int) -> str:
+    """Formats coordinates for logging purposes."""
+    return f"X: {x}, Y: {y}"
+
+def sleep_with_check(seconds: float, stop_event=None) -> bool:
+    """Sleeps while periodically checking for a stop signal."""
+    end_time = time.time() + seconds
+    while time.time() < end_time:
+        if stop_event and stop_event.is_set():
+            return False
+        time.sleep(0.05)
+    return True
