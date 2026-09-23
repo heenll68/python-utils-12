@@ -1,33 +1,27 @@
-import time
-from typing import Callable, Any
-from functools import lru_cache
+class ValidationError(Exception):
+    """Base class for input validation errors in autoclicker."""
+    pass
 
-class ClickValidator:
-    """High-performance validation layer for autoclicker inputs."""
+def validate_click_params(interval: float, count: int) -> None:
+    """
+    Ensures user inputs for the clicker are within safe and logical bounds.
     
-    def __init__(self, debounce_ms: int = 10):
-        self.debounce_ms = debounce_ms / 1000.0
-        self._last_call = 0.0
+    Args:
+        interval: Seconds between clicks (must be positive).
+        count: Number of clicks to perform (must be non-negative).
+    
+    Raises:
+        ValidationError: If inputs fail sanity checks.
+    """
+    if not isinstance(interval, (int, float)) or interval < 0.01:
+        raise ValidationError(f"Invalid interval: {interval}. Must be >= 0.01 seconds.")
+    
+    if not isinstance(count, int) or count < 0:
+        raise ValidationError(f"Invalid count: {count}. Must be a non-negative integer.")
 
-    @lru_cache(maxsize=128)
-    def is_valid_coordinate(self, x: int, y: int, screen_width: int, screen_height: int) -> bool:
-        """Check if coordinate falls within monitor bounds using cache."""
-        return 0 <= x < screen_width and 0 <= y < screen_height
-
-    def rate_limit(func: Callable) -> Callable:
-        """Decorator to throttle click execution frequency."""
-        def wrapper(self, *args, **kwargs):
-            current_time = time.perf_counter()
-            if current_time - self._last_call < self.debounce_ms:
-                return False
-            self._last_call = current_time
-            return func(self, *args, **kwargs)
-        return wrapper
-
-    def validate_interval(self, interval: float) -> float:
-        """Ensure click frequency is within hardware safety limits."""
-        return max(0.001, min(interval, 60.0))
-
-def get_validator_instance(debounce: int = 10) -> ClickValidator:
-    """Factory for persistent validator instance."""
-    return ClickValidator(debounce_ms=debounce)
+def validate_coordinate(x: int, y: int, screen_width: int, screen_height: int) -> None:
+    """
+    Verifies that target click coordinates remain within active display bounds.
+    """
+    if not (0 <= x <= screen_width and 0 <= y <= screen_height):
+        raise ValidationError(f"Coordinates ({x}, {y}) outside screen bounds ({screen_width}, {screen_height}).")
