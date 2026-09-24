@@ -1,29 +1,31 @@
 import time
-import pyautogui
 import random
+import pyautogui
 
-def perform_click(x, y, interval=0.1):
-    """Execute a mouse click at target coordinates."""
+def perform_click(x: int, y: int, interval: float = 0.0) -> None:
+    """Executes a mouse click at target coordinates."""
     pyautogui.click(x, y)
-    time.sleep(interval)
+    if interval > 0:
+        time.sleep(interval)
 
-def perform_drag(start_x, start_y, end_x, end_y, duration=0.5):
-    """Execute a drag operation between two points."""
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.dragTo(end_x, end_y, duration=duration, button='left')
+def random_jitter(x: int, y: int, range_px: int = 5) -> tuple[int, int]:
+    """Applies small random offset to coordinates to mimic human behavior."""
+    dx = random.randint(-range_px, range_px)
+    dy = random.randint(-range_px, range_px)
+    return (x + dx, y + dy)
 
-def wait_random(min_sec=0.5, max_sec=2.0):
-    """Introduce a random delay to mimic human behavior."""
-    delay = random.uniform(min_sec, max_sec)
-    time.sleep(delay)
+def smart_sleep(min_sec: float, max_sec: float) -> None:
+    """Pauses execution for a random duration within a range."""
+    duration = random.uniform(min_sec, max_sec)
+    time.sleep(duration)
 
-def get_screen_center():
-    """Calculate the center of the primary display."""
+def validate_screen_bounds(x: int, y: int) -> bool:
+    """Verifies if target coordinates are within active display."""
     width, height = pyautogui.size()
-    return width // 2, height // 2
+    return 0 <= x < width and 0 <= y < height
 
-def safe_exit_check():
-    """Verify emergency stop condition via mouse position."""
-    x, y = pyautogui.position()
-    if x == 0 and y == 0:
-        raise InterruptedError("Emergency stop triggered at screen corner")
+def click_sequence(coordinates: list[tuple[int, int]], delay: float = 0.1) -> None:
+    """Iterates through a list of coordinates to perform clicks."""
+    for x, y in coordinates:
+        if validate_screen_bounds(x, y):
+            perform_click(x, y, delay)
