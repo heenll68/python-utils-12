@@ -1,27 +1,35 @@
-class ValidationError(Exception):
-    """Base class for input validation errors in autoclicker."""
-    pass
+import time
+import functools
+import logging
 
-def validate_click_params(interval: float, count: int) -> None:
-    """
-    Ensures user inputs for the clicker are within safe and logical bounds.
-    
-    Args:
-        interval: Seconds between clicks (must be positive).
-        count: Number of clicks to perform (must be non-negative).
-    
-    Raises:
-        ValidationError: If inputs fail sanity checks.
-    """
-    if not isinstance(interval, (int, float)) or interval < 0.01:
-        raise ValidationError(f"Invalid interval: {interval}. Must be >= 0.01 seconds.")
-    
-    if not isinstance(count, int) or count < 0:
-        raise ValidationError(f"Invalid count: {count}. Must be a non-negative integer.")
+logger = logging.getLogger(__name__)
 
-def validate_coordinate(x: int, y: int, screen_width: int, screen_height: int) -> None:
+def retry_network_op(retries=3, delay=2, exceptions=(ConnectionError, TimeoutError)):
     """
-    Verifies that target click coordinates remain within active display bounds.
+    Decorator to retry network-dependent functions with exponential backoff.
     """
-    if not (0 <= x <= screen_width and 0 <= y <= screen_height):
-        raise ValidationError(f"Coordinates ({x}, {y}) outside screen bounds ({screen_width}, {screen_height}).")
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            current_delay = delay
+            
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= 2
+            
+            logger.error(f"Operation failed after {retries} attempts.")
+            raise last_exception
+        return wrapper
+    return decorator
+
+def validate_connection_status(status_code: int) -> bool:
+    """
+    Checks if the status code indicates a successful network response.
+    """
+    return 200 <= status_code < 300
