@@ -1,36 +1,30 @@
 import time
-from functools import lru_cache
+import pyautogui
+from typing import Tuple
 
-@lru_cache(maxsize=128)
-def get_normalized_coordinates(x: int, y: int, screen_width: int, screen_height: int) -> tuple:
-    """Cache coordinate normalization to reduce floating point math in hot loops."""
-    nx = max(0, min(1, x / screen_width))
-    ny = max(0, min(1, y / screen_height))
-    return (nx, ny)
+def safe_click(x: int, y: int, interval: float = 0.1) -> None:
+    """Performs a click at specific coordinates with delay."""
+    pyautogui.moveTo(x, y)
+    time.sleep(interval)
+    pyautogui.click()
 
-def throttle_click_events(interval_ms: int):
-    """Decorator to prevent click spamming beyond specified frequency."""
-    last_called = [0.0]
+def get_mouse_position() -> Tuple[int, int]:
+    """Returns the current screen coordinates of the mouse."""
+    return pyautogui.position()
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            now = time.perf_counter()
-            if (now - last_called[0]) >= (interval_ms / 1000.0):
-                last_called[0] = now
-                return func(*args, **kwargs)
-        return wrapper
-    return decorator
+def wait_for_input(seconds: float) -> None:
+    """Pauses execution for a specified duration."""
+    time.sleep(seconds)
 
-def calculate_dynamic_delay(base_delay: float, jitter: float) -> float:
-    """Simulate human timing variance to bypass basic detection."""
-    import random
-    return base_delay + random.uniform(-jitter, jitter)
+def perform_drag(start: Tuple[int, int], end: Tuple[int, int], duration: float = 0.5) -> None:
+    """Drags the mouse from one point to another."""
+    pyautogui.moveTo(start[0], start[1])
+    pyautogui.dragTo(end[0], end[1], duration=duration)
 
-class ClickPerformanceTimer:
-    """Context manager for tracking click execution latency."""
-    def __enter__(self):
-        self.start = time.perf_counter()
-        return self
+def validate_coordinates(x: int, y: int, screen_width: int, screen_height: int) -> bool:
+    """Checks if coordinates are within screen boundaries."""
+    return 0 <= x < screen_width and 0 <= y < screen_height
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.elapsed = time.perf_counter() - self.start
+def emergency_stop() -> None:
+    """Aborts all operations via fail-safe move."""
+    pyautogui.FAILSAFE = True
