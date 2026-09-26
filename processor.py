@@ -1,31 +1,62 @@
 import time
-import random
-import pyautogui
+from typing import Dict, Any, List, Optional
 
-def perform_click(x: int, y: int, interval: float = 0.0) -> None:
-    """Executes a mouse click at target coordinates."""
-    pyautogui.click(x, y)
-    if interval > 0:
-        time.sleep(interval)
 
-def random_jitter(x: int, y: int, range_px: int = 5) -> tuple[int, int]:
-    """Applies small random offset to coordinates to mimic human behavior."""
-    dx = random.randint(-range_px, range_px)
-    dy = random.randint(-range_px, range_px)
-    return (x + dx, y + dy)
+class ClickTaskProcessor:
+    """Processes and validates autoclicker task parameters in the execution loop."""
 
-def smart_sleep(min_sec: float, max_sec: float) -> None:
-    """Pauses execution for a random duration within a range."""
-    duration = random.uniform(min_sec, max_sec)
-    time.sleep(duration)
+    ALLOWED_BUTTONS = {"left", "right", "middle"}
 
-def validate_screen_bounds(x: int, y: int) -> bool:
-    """Verifies if target coordinates are within active display."""
-    width, height = pyautogui.size()
-    return 0 <= x < width and 0 <= y < height
+    def __init__(self, min_interval: float = 0.01, max_clicks: int = 10000):
+        self.min_interval = min_interval
+        self.max_clicks = max_clicks
 
-def click_sequence(coordinates: list[tuple[int, int]], delay: float = 0.1) -> None:
-    """Iterates through a list of coordinates to perform clicks."""
-    for x, y in coordinates:
-        if validate_screen_bounds(x, y):
-            perform_click(x, y, delay)
+    def validate_task_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validates raw task parameters and returns normalized config."""
+        interval = float(config.get("interval", 0.1))
+        if interval < self.min_interval:
+            raise ValueError(f"Interval {interval}s below minimum safe limit of {self.min_interval}s")
+
+        clicks = int(config.get("clicks", 10))
+        if clicks <= 0 or clicks > self.max_clicks:
+            raise ValueError(f"Clicks count {clicks} must be between 1 and {self.max_clicks}")
+
+        button = str(config.get("button", "left")).lower()
+        if button not in self.ALLOWED_BUTTONS:
+            raise ValueError(f"Invalid button '{button}'. Allowed: {self.ALLOWED_BUTTONS}")
+
+        coords = config.get("coordinates")
+        if coords is not None:
+            if not (isinstance(coords, (tuple, list)) and len(coords) == 2):
+                raise ValueError("Coordinates must be a tuple/list of two integers (x, y)")
+            x, y = coords
+            if not (isinstance(x, int) and isinstance(y, int) and x >= 0 and y >= 0):
+                raise ValueError(f"Invalid screen coordinates: ({x}, {y})")
+
+        return {
+            "interval": interval,
+            "clicks": clicks,
+            "button": button,
+            "coordinates": tuple(coords) if coords else None,
+        }
+
+    def process_queue(self, task_queue: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Main processing loop with input validation for queued click tasks."""
+        processed_results = []
+
+        for index, raw_task in enumerate(task_queue):
+            try:
+                valid_config = self.validate_task_config(raw_task)
+                processed_results.append({
+                    "task_id": index,
+                    "status": "validated",
+                    "config": valid_config
+                })
+            except (ValueError, TypeError) as err:
+                processed_results.append({
+                    "task_id": index,
+                    "status": "failed",
+                    "error": str(err)
+                })
+
+        return processed_results
