@@ -1,28 +1,27 @@
-from typing import Optional
-
 class AutoclickerError(Exception):
-    """Base exception class for all autoclicker issues."""
-    pass
+    """Base exception for all autoclicker issues."""
 
 class ConfigurationError(AutoclickerError):
-    """Raised when the autoclicker configuration is invalid."""
-    def __init__(self, message: str, config_key: Optional[str] = None) -> None:
-        self.config_key = config_key
-        super().__init__(f"Configuration error at {config_key}: {message}" if config_key else message)
+    """Raised when settings are invalid."""
 
-class ClickExecutionError(AutoclickerError):
-    """Raised when a mouse click event fails to trigger."""
-    def __init__(self, x: int, y: int, reason: str) -> None:
-        self.x = x
-        self.y = y
-        super().__init__(f"Failed to click at ({x}, {y}): {reason}")
+class HardwareControlError(AutoclickerError):
+    """Raised when input injection fails."""
 
-class InputMappingError(AutoclickerError):
-    """Raised when input key mappings cannot be parsed."""
-    def __init__(self, key_code: str) -> None:
-        super().__init__(f"Invalid or unsupported key mapping: {key_code}")
+class ProcessInterruptError(AutoclickerError):
+    """Raised when execution is force-stopped."""
 
-class ProcessInterrupt(AutoclickerError):
-    """Raised when the autoclicker process is manually stopped."""
-    def __init__(self, message: str = "Execution interrupted by user") -> None:
-        super().__init__(message)
+def validate_interval(interval: float) -> None:
+    """Ensures click interval is within safe bounds."""
+    if not isinstance(interval, (int, float)):
+        raise ConfigurationError(f"Invalid type: {type(interval)}")
+    if interval < 0.01:
+        raise ConfigurationError("Interval below 10ms threshold")
+
+def handle_control_exception(err: Exception) -> None:
+    """Centralized error reporting for input operations."""
+    if isinstance(err, HardwareControlError):
+        print(f"Critical hardware failure: {err}")
+    elif isinstance(err, ConfigurationError):
+        print(f"Configuration safety violation: {err}")
+    else:
+        print(f"Unexpected autoclicker runtime error: {err}")
