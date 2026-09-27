@@ -1,27 +1,35 @@
-class AutoclickerError(Exception):
-    """Base exception for all autoclicker issues."""
+class ValidationError(Exception):
+    """Base class for autoclicker input validation errors."""
+    pass
 
-class ConfigurationError(AutoclickerError):
-    """Raised when settings are invalid."""
+class ConfigValueError(ValidationError):
+    """Raised when user-provided config values are invalid."""
+    pass
 
-class HardwareControlError(AutoclickerError):
-    """Raised when input injection fails."""
-
-class ProcessInterruptError(AutoclickerError):
-    """Raised when execution is force-stopped."""
-
-def validate_interval(interval: float) -> None:
-    """Ensures click interval is within safe bounds."""
+def validate_click_interval(interval: float):
+    """Ensures click interval is within safe operating bounds."""
     if not isinstance(interval, (int, float)):
-        raise ConfigurationError(f"Invalid type: {type(interval)}")
+        raise ConfigValueError(f"Interval must be numeric, got {type(interval).__name__}")
     if interval < 0.01:
-        raise ConfigurationError("Interval below 10ms threshold")
+        raise ConfigValueError("Interval too low; risk of system instability")
+    if interval > 60.0:
+        raise ConfigValueError("Interval too high; capping at 60 seconds")
 
-def handle_control_exception(err: Exception) -> None:
-    """Centralized error reporting for input operations."""
-    if isinstance(err, HardwareControlError):
-        print(f"Critical hardware failure: {err}")
-    elif isinstance(err, ConfigurationError):
-        print(f"Configuration safety violation: {err}")
-    else:
-        print(f"Unexpected autoclicker runtime error: {err}")
+def validate_coordinates(x: int, y: int):
+    """Checks if screen coordinates are within expected ranges."""
+    if not (0 <= x <= 10000 and 0 <= y <= 10000):
+        raise ConfigValueError(f"Coordinates ({x}, {y}) out of realistic screen bounds")
+
+def validate_input_config(data: dict):
+    """
+    Processes dictionary configuration inputs for the main loop.
+    Validates presence and range of required control parameters.
+    """
+    required = ['interval', 'x', 'y']
+    for key in required:
+        if key not in data:
+            raise ConfigValueError(f"Missing required configuration key: {key}")
+    
+    validate_click_interval(data['interval'])
+    validate_coordinates(data['x'], data['y'])
+    return True
