@@ -1,33 +1,46 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import json
+from datetime import datetime
+from pathlib import Path
 
-def setup_logger(name='autoclicker', log_file='autoclicker.log'):
-    """Initializes a rotating file logger for the application."""
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+# Configure autoclicker event logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('autoclicker')
 
-    # Prevent duplicate handlers if setup is called multiple times
-    if not logger.handlers:
-        # 5MB per file, keep 3 backup files
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5*1024*1024, 
-            backupCount=3
-        )
+LOG_FILE = Path('click_history.json')
+
+def log_click_event(coords: tuple, button: str, timestamp: float = None):
+    """Records click action to local persistent storage."""
+    data = {
+        'x': coords[0],
+        'y': coords[1],
+        'button': button,
+        'time': timestamp or datetime.now().timestamp()
+    }
+
+    try:
+        history = []
+        if LOG_FILE.exists():
+            with open(LOG_FILE, 'r') as f:
+                history = json.load(f)
         
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        history.append(data)
         
-        # Optional: Add console output for development
-        console = logging.StreamHandler()
-        console.setFormatter(formatter)
-        logger.addHandler(console)
+        with open(LOG_FILE, 'w') as f:
+            json.dump(history, f, indent=4)
+            
+        logger.info(f"Logged click at {coords}")
+    except (IOError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to write click log: {e}")
 
-    return logger
-
-# Instantiate singleton logger
-logger = setup_logger()
+def get_recent_clicks(limit: int = 10):
+    """Retrieves the last N recorded click events."""
+    if not LOG_FILE.exists():
+        return []
+    try:
+        with open(LOG_FILE, 'r') as f:
+            data = json.load(f)
+            return data[-limit:]
+    except Exception as e:
+        logger.error(f"Error reading log file: {e}")
+        return []
