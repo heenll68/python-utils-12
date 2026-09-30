@@ -1,40 +1,37 @@
 import time
-import threading
-from dataclasses import dataclass
+import pyautogui
+from typing import Tuple, Optional
 
-@dataclass(slots=True)
-class ClickTask:
-    x: int
-    y: int
-    delay: float
+class AutoClicker:
+    """Handles periodic mouse clicking functionality."""
 
-class ClickProcessor:
-    """Optimized click execution using slot-based data structures."""
-    def __init__(self):
-        self._running = False
-        self._lock = threading.Lock()
+    def __init__(self, interval: float = 0.1) -> None:
+        """Initialize clicker with click frequency in seconds."""
+        self.interval: float = interval
+        self.is_running: bool = False
 
-    def execute_sequence(self, tasks: list[ClickTask]):
-        """Executes click sequence with minimal object overhead."""
-        self._running = True
-        try:
-            for task in tasks:
-                if not self._running:
-                    break
-                self._perform_click(task.x, task.y)
-                time.sleep(task.delay)
-        finally:
-            self._running = False
+    def click(self, position: Optional[Tuple[int, int]] = None) -> None:
+        """Perform a mouse click at a specific or current coordinate."""
+        if position:
+            pyautogui.click(x=position[0], y=position[1])
+        else:
+            pyautogui.click()
 
-    def _perform_click(self, x: int, y: int):
-        """Mock low-level click event."""
-        # Direct system call interface would go here
-        pass
+    def start_loop(self, duration: int, position: Optional[Tuple[int, int]] = None) -> None:
+        """Execute clicks for a set duration."""
+        self.is_running = True
+        end_time = time.time() + duration
+        
+        while self.is_running and time.time() < end_time:
+            self.click(position)
+            time.sleep(self.interval)
+        
+        self.is_running = False
 
-    def stop(self):
-        with self._lock:
-            self._running = False
+    def stop(self) -> None:
+        """Terminate the active click loop."""
+        self.is_running = False
 
-def get_optimized_processor() -> ClickProcessor:
-    """Factory for pre-configured click processor."""
-    return ClickProcessor()
+if __name__ == "__main__":
+    clicker = AutoClicker(interval=0.5)
+    clicker.start_loop(duration=5)
