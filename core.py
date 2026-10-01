@@ -1,37 +1,39 @@
 import time
-import pyautogui
-from typing import Tuple, Optional
+import threading
+from typing import Callable
 
-class AutoClicker:
-    """Handles periodic mouse clicking functionality."""
+class ClickEngine:
+    """High-performance autoclicker engine using polling optimization."""
 
-    def __init__(self, interval: float = 0.1) -> None:
-        """Initialize clicker with click frequency in seconds."""
-        self.interval: float = interval
-        self.is_running: bool = False
+    def __init__(self, interval: float, callback: Callable):
+        self.interval = interval
+        self.callback = callback
+        self._running = False
+        self._thread = None
 
-    def click(self, position: Optional[Tuple[int, int]] = None) -> None:
-        """Perform a mouse click at a specific or current coordinate."""
-        if position:
-            pyautogui.click(x=position[0], y=position[1])
-        else:
-            pyautogui.click()
+    def _run(self):
+        """Executes click loop with minimal drift via delta timing."""
+        next_click = time.perf_counter()
+        while self._running:
+            now = time.perf_counter()
+            if now >= next_click:
+                self.callback()
+                next_click += self.interval
+            else:
+                # Sleep for remaining time to reduce CPU overhead
+                sleep_time = max(0, next_click - now)
+                time.sleep(sleep_time)
 
-    def start_loop(self, duration: int, position: Optional[Tuple[int, int]] = None) -> None:
-        """Execute clicks for a set duration."""
-        self.is_running = True
-        end_time = time.time() + duration
-        
-        while self.is_running and time.time() < end_time:
-            self.click(position)
-            time.sleep(self.interval)
-        
-        self.is_running = False
+    def start(self):
+        """Spawns click execution thread."""
+        if not self._running:
+            self._running = True
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
 
-    def stop(self) -> None:
-        """Terminate the active click loop."""
-        self.is_running = False
-
-if __name__ == "__main__":
-    clicker = AutoClicker(interval=0.5)
-    clicker.start_loop(duration=5)
+    def stop(self):
+        """Signals thread termination."""
+        self._running = False
+        if self._thread:
+            self._thread.join()
+            self._thread = None
