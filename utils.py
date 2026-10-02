@@ -1,30 +1,32 @@
 import time
-import pyautogui
-from typing import Tuple
+import functools
+import logging
 
-def safe_click(x: int, y: int, interval: float = 0.1) -> None:
-    """Performs a mouse click at coordinates with a safety delay."""
-    pyautogui.moveTo(x, y)
-    time.sleep(interval)
-    pyautogui.click()
+logger = logging.getLogger(__name__)
 
-def get_mouse_position() -> Tuple[int, int]:
-    """Retrieves current screen coordinates of the mouse cursor."""
-    return pyautogui.position()
+def retry_network_op(retries=3, delay=1, backoff=2):
+    """Decorator for network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            current_delay = delay
+            while attempt < retries:
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    attempt += 1
+                    if attempt == retries:
+                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
+                        raise
+                    logger.warning(f"Attempt {attempt} failed, retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-def debounce_input(last_time: float, threshold: float = 0.5) -> bool:
-    """Checks if enough time has passed since last action."""
-    return (time.time() - last_time) > threshold
-
-def format_coordinates(x: int, y: int) -> str:
-    """Formats coordinates for logging purposes."""
-    return f"X: {x}, Y: {y}"
-
-def sleep_with_check(seconds: float, stop_event=None) -> bool:
-    """Sleeps while periodically checking for a stop signal."""
-    end_time = time.time() + seconds
-    while time.time() < end_time:
-        if stop_event and stop_event.is_set():
-            return False
-        time.sleep(0.05)
-    return True
+@retry_network_op(retries=3, delay=2)
+def ping_server(url):
+    """Example network operation function."""
+    # Placeholder for actual socket/requests logic
+    pass
