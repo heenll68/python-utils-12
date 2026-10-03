@@ -1,35 +1,32 @@
-import json
-import os
-from typing import Dict, Any
+import time
+import pyautogui
+from typing import Dict, Any, Optional
 
-def load_clicker_profile(filepath: str) -> Dict[str, Any]:
-    """Loads autoclicker configuration from JSON file."""
-    if not os.path.exists(filepath):
-        return {"interval": 0.1, "button": "left", "enabled": False}
-    
-    try:
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {"interval": 0.1, "button": "left", "enabled": False}
+class ClickHandler:
+    """Handles automated click execution with safety delays."""
 
-def save_clicker_profile(filepath: str, data: Dict[str, Any]) -> bool:
-    """Persists autoclicker settings to disk safely."""
-    try:
-        temp_path = f"{filepath}.tmp"
-        with open(temp_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        os.replace(temp_path, filepath)
-        return True
-    except (IOError, TypeError):
-        return False
+    def __init__(self, interval: float = 0.1) -> None:
+        """Initialize handler with a base click interval."""
+        self.interval: float = interval
 
-def validate_profile(data: Dict[str, Any]) -> bool:
-    """Ensures configuration values are within safe bounds."""
-    interval = data.get("interval", 0.1)
-    button = data.get("button", "left")
-    
-    valid_interval = isinstance(interval, (int, float)) and interval > 0.001
-    valid_button = button in ["left", "right", "middle"]
-    
-    return valid_interval and valid_button
+    def perform_click(self, x: int, y: int, button: str = "left") -> None:
+        """Executes a mouse click at the specified coordinates."""
+        pyautogui.click(x=x, y=y, button=button)
+        time.sleep(self.interval)
+
+    def perform_sequence(self, coordinates: list[tuple[int, int]]) -> None:
+        """Executes a series of clicks in order."""
+        for x, y in coordinates:
+            self.perform_click(x, y)
+
+    def get_status(self) -> Dict[str, Any]:
+        """Retrieves the current operational status of the handler."""
+        return {
+            "interval": self.interval,
+            "active": True,
+            "platform": "pyautogui"
+        }
+
+    def safe_stop(self, delay: float = 0.5) -> None:
+        """Forces a pause to prevent runaway click sequences."""
+        time.sleep(delay)
