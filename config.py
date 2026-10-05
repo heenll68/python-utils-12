@@ -2,31 +2,50 @@ import json
 import os
 from typing import Any, Dict
 
-DEFAULT_CONFIG = {
-    "interval": 0.1,
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "cps": 10.0,
     "button": "left",
-    "repeat": 100,
-    "hotkey": "f8"
+    "hotkey": "f6",
+    "click_type": "single",
+    "random_interval": True,
+    "interval_jitter": 0.02,
+    "max_clicks": 0,
+    "sound_feedback": False,
 }
 
-def load_config(config_path: str = "config.json") -> Dict[str, Any]:
-    """Load configuration from JSON or return defaults."""
-    config = DEFAULT_CONFIG.copy()
-    
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r") as f:
-                user_config = json.load(f)
-                config.update(user_config)
-        except (json.JSONDecodeError, IOError):
-            print(f"Warning: Failed to read {config_path}, using defaults.")
-    
-    return config
+class ConfigLoader:
+    """Handles loading, saving, and managing autoclicker settings."""
 
-def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
-    """Persist current configuration to disk."""
-    try:
-        with open(config_path, "w") as f:
-            json.dump(config, f, indent=4)
-    except IOError as e:
-        print(f"Error saving config: {e}")
+    def __init__(self, config_path: str = "config.json"):
+        self.config_path = config_path
+        self.config = self.load_config()
+
+    def load_config(self) -> Dict[str, Any]:
+        """Loads config from JSON file or creates defaults if missing."""
+        if not os.path.exists(self.config_path):
+            self.save_config(DEFAULT_CONFIG)
+            return DEFAULT_CONFIG.copy()
+
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                loaded_data = json.load(f)
+            
+            # Merge defaults for any missing keys
+            config = DEFAULT_CONFIG.copy()
+            config.update(loaded_data)
+            return config
+        except (json.JSONDecodeError, OSError):
+            return DEFAULT_CONFIG.copy()
+
+    def save_config(self, config_data: Dict[str, Any]) -> bool:
+        """Saves current configuration to the JSON file."""
+        try:
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4)
+            return True
+        except OSError:
+            return False
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieves a specific configuration setting."""
+        return self.config.get(key, default)
