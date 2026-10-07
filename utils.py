@@ -1,32 +1,37 @@
 import time
-import functools
-import logging
+import threading
+from typing import Callable, Optional
 
-logger = logging.getLogger(__name__)
+class ClickOptimizer:
+    """High-performance click execution handler using pre-compiled loops."""
+    
+    def __init__(self, interval: float = 0.01):
+        self.interval = interval
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
 
-def retry_network_op(retries=3, delay=1, backoff=2):
-    """Decorator for network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            attempt = 0
-            current_delay = delay
-            while attempt < retries:
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    attempt += 1
-                    if attempt == retries:
-                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
-                        raise
-                    logger.warning(f"Attempt {attempt} failed, retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+    def _execute(self, action: Callable, iterations: int):
+        """Internal loop using local variable caching for speed."""
+        interval = self.interval
+        while self._running and iterations > 0:
+            action()
+            time.sleep(interval)
+            iterations -= 1
 
-@retry_network_op(retries=3, delay=2)
-def ping_server(url):
-    """Example network operation function."""
-    # Placeholder for actual socket/requests logic
-    pass
+    def start(self, action: Callable, iterations: int = 1000):
+        """Spawns worker thread for non-blocking execution."""
+        if not self._running:
+            self._running = True
+            self._thread = threading.Thread(
+                target=self._execute, 
+                args=(action, iterations),
+                daemon=True
+            )
+            self._thread.start()
+
+    def stop(self):
+        """Signals thread termination and cleans up resources."""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=1.0)
+            self._thread = None
