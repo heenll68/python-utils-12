@@ -1,51 +1,37 @@
 import json
 import os
-from typing import Any, Dict
 
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "cps": 10.0,
-    "button": "left",
-    "hotkey": "f6",
-    "click_type": "single",
-    "random_interval": True,
-    "interval_jitter": 0.02,
-    "max_clicks": 0,
-    "sound_feedback": False,
-}
+class ConfigError(Exception):
+    """Custom exception for configuration loading issues."""
+    pass
 
-class ConfigLoader:
-    """Handles loading, saving, and managing autoclicker settings."""
+def load_config(filepath):
+    """Loads and validates JSON configuration for the autoclicker."""
+    if not os.path.exists(filepath):
+        raise ConfigError(f"Configuration file not found: {filepath}")
 
-    def __init__(self, config_path: str = "config.json"):
-        self.config_path = config_path
-        self.config = self.load_config()
+    try:
+        with open(filepath, 'r') as f:
+            config = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"Malformed JSON in configuration: {e}")
+    except PermissionError:
+        raise ConfigError(f"Insufficient permissions to read: {filepath}")
 
-    def load_config(self) -> Dict[str, Any]:
-        """Loads config from JSON file or creates defaults if missing."""
-        if not os.path.exists(self.config_path):
-            self.save_config(DEFAULT_CONFIG)
-            return DEFAULT_CONFIG.copy()
+    # Validate mandatory fields
+    required_fields = ['click_interval', 'max_clicks']
+    for field in required_fields:
+        if field not in config:
+            raise ConfigError(f"Missing required field: {field}")
+        if not isinstance(config[field], (int, float)) or config[field] < 0:
+            raise ConfigError(f"Invalid value for {field}: must be positive number")
 
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                loaded_data = json.load(f)
-            
-            # Merge defaults for any missing keys
-            config = DEFAULT_CONFIG.copy()
-            config.update(loaded_data)
-            return config
-        except (json.JSONDecodeError, OSError):
-            return DEFAULT_CONFIG.copy()
+    return config
 
-    def save_config(self, config_data: Dict[str, Any]) -> bool:
-        """Saves current configuration to the JSON file."""
-        try:
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=4)
-            return True
-        except OSError:
-            return False
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieves a specific configuration setting."""
-        return self.config.get(key, default)
+def get_default_config():
+    """Returns hardcoded safe defaults if file is missing."""
+    return {
+        "click_interval": 0.1,
+        "max_clicks": 1000,
+        "button": "left"
+    }
