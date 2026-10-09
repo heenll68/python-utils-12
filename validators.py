@@ -1,24 +1,29 @@
-class ValidationError(Exception):
-    """Custom exception for input validation failures in autoclicker."""
-    pass
+import functools
+import time
+from typing import Callable, Any
 
-def validate_click_params(interval: float, count: int) -> None:
-    """Ensures click parameters are within safe operational bounds."""
-    if not isinstance(interval, (int, float)) or interval < 0.01:
-        raise ValidationError(f"Invalid interval: {interval}. Must be >= 0.01s")
-    
-    if not isinstance(count, int) or (count < -1):
-        raise ValidationError(f"Invalid count: {count}. Must be -1 (infinite) or > 0")
+# Cache for performance optimization of validator calls
+_validator_cache = {}
 
-def validate_coordinates(x: int, y: int, screen_width: int, screen_height: int) -> None:
-    """Verifies target coordinates fall within screen boundaries."""
-    if not (0 <= x <= screen_width and 0 <= y <= screen_height):
-        raise ValidationError(f"Coordinates ({x}, {y}) out of screen bounds")
+def memoize_validator(func: Callable) -> Callable:
+    """Cache validator results to reduce redundant checks in high-speed loops."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _validator_cache:
+            _validator_cache[key] = func(*args, **kwargs)
+        return _validator_cache[key]
+    return wrapper
 
-def sanitize_input(value: str, default: int) -> int:
-    """Attempts to parse integer input with a fallback mechanism."""
-    try:
-        parsed = int(value)
-        return parsed if parsed > 0 else default
-    except (ValueError, TypeError):
-        return default
+@memoize_validator
+def validate_click_interval(interval: float) -> bool:
+    """Ensures click interval is within hardware safety limits."""
+    return 0.001 <= interval <= 60.0
+
+def clear_validator_cache() -> None:
+    """Clears memory for the validator cache during config reload."""
+    _validator_cache.clear()
+
+def validate_coordinates(x: int, y: int, screen_width: int, screen_height: int) -> bool:
+    """Bounds checking for click coordinates."""
+    return (0 <= x < screen_width) and (0 <= y < screen_height)
