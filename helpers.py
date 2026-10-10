@@ -1,31 +1,33 @@
 import time
-import random
-import pyautogui
+import threading
+from typing import Callable, Any
 
-def safe_click(x, y, delay=0.1):
-    """Perform a click with random jitter and safety delay."""
-    jitter_x = random.randint(-2, 2)
-    jitter_y = random.randint(-2, 2)
-    pyautogui.moveTo(x + jitter_x, y + jitter_y)
-    pyautogui.click()
-    time.sleep(delay)
+def run_in_thread(target: Callable[..., Any], *args: Any, **kwargs: Any) -> threading.Thread:
+    """
+    Spawns a daemon thread for background tasks like autoclicking.
 
-def wait_for_seconds(base_seconds, variance=0.2):
-    """Pause execution for a random time interval."""
-    sleep_time = base_seconds + random.uniform(-variance, variance)
-    time.sleep(max(0, sleep_time))
+    :param target: Function to execute
+    :param args: Positional arguments for the function
+    :param kwargs: Keyword arguments for the function
+    :return: The started thread object
+    """
+    thread = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
+    thread.start()
+    return thread
 
-def get_screen_center():
-    """Calculate the center point of the primary display."""
-    width, height = pyautogui.size()
-    return width // 2, height // 2
+def sleep_ms(milliseconds: int) -> None:
+    """
+    Pause execution for a specific duration in milliseconds.
 
-def is_in_bounds(x, y):
-    """Validate if coordinates are within screen dimensions."""
-    width, height = pyautogui.size()
-    return 0 <= x < width and 0 <= y < height
+    :param milliseconds: Time to sleep in ms
+    """
+    time.sleep(milliseconds / 1000.0)
 
-def drag_to(start_x, start_y, end_x, end_y, duration=0.5):
-    """Execute a smooth drag operation between two points."""
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.dragTo(end_x, end_y, duration=duration, tween=pyautogui.easeInOutQuad)
+def format_interval(interval: float) -> str:
+    """
+    Converts interval float to a human-readable string representation.
+
+    :param interval: Interval value in seconds
+    :return: Formatted string
+    """
+    return f"{interval:.3f}s"
