@@ -1,33 +1,35 @@
-import time
-import threading
-from typing import Callable, Any
+import logging
+import pyautogui
 
-def run_in_thread(target: Callable[..., Any], *args: Any, **kwargs: Any) -> threading.Thread:
-    """
-    Spawns a daemon thread for background tasks like autoclicking.
+logger = logging.getLogger(__name__)
 
-    :param target: Function to execute
-    :param args: Positional arguments for the function
-    :param kwargs: Keyword arguments for the function
-    :return: The started thread object
-    """
-    thread = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
-    thread.start()
-    return thread
+def safe_click(x: int, y: int, interval: float = 0.1):
+    """Performs a click with boundary and failure handling."""
+    try:
+        screen_width, screen_height = pyautogui.size()
+        
+        # Validate coordinates are within screen bounds
+        if not (0 <= x <= screen_width and 0 <= y <= screen_height):
+            logger.error(f"Coordinates ({x}, {y}) out of screen bounds")
+            return False
+            
+        pyautogui.click(x=x, y=y)
+        return True
+    except pyautogui.FailSafeException:
+        logger.critical("Fail-safe triggered by user")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected clicking error: {e}")
+        return False
 
-def sleep_ms(milliseconds: int) -> None:
-    """
-    Pause execution for a specific duration in milliseconds.
-
-    :param milliseconds: Time to sleep in ms
-    """
-    time.sleep(milliseconds / 1000.0)
-
-def format_interval(interval: float) -> str:
-    """
-    Converts interval float to a human-readable string representation.
-
-    :param interval: Interval value in seconds
-    :return: Formatted string
-    """
-    return f"{interval:.3f}s"
+def validate_interval(value: float) -> float:
+    """Ensures interval is within sane operational limits."""
+    try:
+        val = float(value)
+        if val < 0.01:
+            logger.warning("Interval too low, defaulting to 0.01s")
+            return 0.01
+        return val
+    except (ValueError, TypeError):
+        logger.error("Invalid interval format, defaulting to 1.0s")
+        return 1.0
