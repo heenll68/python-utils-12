@@ -1,41 +1,34 @@
 import time
 import logging
 
-# Configure basic logging for the autoclicker
+# Configure logging for the autoclicker module
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('processor')
 
-def validate_input(delay, iterations):
-    """Ensures click parameters are within safe operational bounds."""
-    if not isinstance(delay, (int, float)) or delay < 0.01:
-        raise ValueError("delay must be a float >= 0.01 seconds")
-    if not isinstance(iterations, int) or iterations < 0:
-        raise ValueError("iterations must be a non-negative integer")
+def validate_inputs(interval, clicks):
+    """Ensures input parameters are within operational safety limits."""
+    if not isinstance(interval, (int, float)) or interval < 0.01:
+        raise ValueError("Interval must be at least 0.01 seconds.")
+    if not isinstance(clicks, int) or clicks < 0:
+        raise ValueError("Click count must be a non-negative integer.")
     return True
 
-def run_autoclicker(delay, iterations):
+def run_clicker_loop(interval: float, clicks: int):
     """
-    Main processing loop for executing click events.
-    Includes validation of inputs to prevent system instability.
+    Main processing loop for executing clicks with
+    validated parameters to prevent erratic system behavior.
     """
     try:
-        validate_input(delay, iterations)
-        logger.info(f"Starting sequence: {iterations} clicks with {delay}s interval")
-        
-        count = 0
-        while count < iterations:
-            # Simulated click event logic
-            time.sleep(delay)
-            count += 1
-            if count % 10 == 0:
-                logger.info(f"Progress: {count}/{iterations} clicks completed")
-        
-        logger.info("Sequence finished successfully")
+        validate_inputs(interval, clicks)
     except ValueError as e:
-        logger.error(f"Configuration error: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected loop error: {e}")
+        logger.error(f"Invalid configuration detected: {e}")
+        return
 
-if __name__ == "__main__":
-    # Example execution with valid parameters
-    run_autoclicker(0.1, 5)
+    remaining = clicks
+    while remaining > 0:
+        logger.info(f"Executing click. Remaining: {remaining}")
+        # Simulated mouse event execution
+        time.sleep(interval)
+        remaining -= 1
+
+    logger.info("Processing cycle completed successfully.")
