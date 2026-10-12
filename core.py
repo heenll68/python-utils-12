@@ -1,39 +1,35 @@
 import time
-import threading
-from pynput.mouse import Button, Controller
+import pyautogui
+from typing import Optional
 
 class AutoClicker:
-    def __init__(self, interval: float = 0.01):
-        self.mouse = Controller()
+    """Core engine for automated mouse clicking operations."""
+
+    def __init__(self, interval: float = 0.1, button: str = 'left'):
         self.interval = interval
-        self.running = False
-        self._lock = threading.Lock()
+        self.button = button
+        self.is_running = False
 
-    def start(self):
-        with self._lock:
-            self.running = True
-        threading.Thread(target=self._run_loop, daemon=True).start()
+    def start_clicking(self, duration: Optional[int] = None) -> None:
+        """Executes click loop based on interval settings."""
+        self.is_running = True
+        start_time = time.time()
 
-    def stop(self):
-        with self._lock:
-            self.running = False
+        try:
+            while self.is_running:
+                pyautogui.click(button=self.button)
+                time.sleep(self.interval)
 
-    def _run_loop(self):
-        """High-frequency click loop with minimal overhead"""
-        click_func = self.mouse.click
-        btn = Button.left
-        
-        while True:
-            with self._lock:
-                if not self.running:
+                if duration and (time.time() - start_time) > duration:
                     break
-            
-            click_func(btn)
-            # Use sleep for lower CPU usage than busy-wait
-            time.sleep(self.interval)
+        except KeyboardInterrupt:
+            self.stop_clicking()
 
-if __name__ == '__main__':
-    clicker = AutoClicker(interval=0.05)
-    clicker.start()
-    time.sleep(2)
-    clicker.stop()
+    def stop_clicking(self) -> None:
+        """Safe termination of clicking thread."""
+        self.is_running = False
+
+if __name__ == "__main__":
+    clicker = AutoClicker(interval=0.5)
+    print("Starting autoclicker. Press Ctrl+C to stop.")
+    clicker.start_clicking()
