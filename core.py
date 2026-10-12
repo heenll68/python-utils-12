@@ -1,53 +1,39 @@
 import time
 import threading
-from typing import Callable, Optional
+from pynput.mouse import Button, Controller
 
-class FastAutoclicker:
-    '''High-performance click loop with high-resolution timing calibration.'''
-    def __init__(self, click_action: Callable[[], None], interval: float = 0.001):
-        self.click_action = click_action
+class AutoClicker:
+    def __init__(self, interval: float = 0.01):
+        self.mouse = Controller()
         self.interval = interval
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self.running = False
+        self._lock = threading.Lock()
 
-    def start(self) -> None:
-        '''Starts the autoclicking loop in a background thread.'''
-        if self._running:
-            return
-        self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self._thread.start()
+    def start(self):
+        with self._lock:
+            self.running = True
+        threading.Thread(target=self._run_loop, daemon=True).start()
 
-    def stop(self) -> None:
-        '''Stops the autoclicking loop.'''
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=1.0)
+    def stop(self):
+        with self._lock:
+            self.running = False
 
-    def _loop(self) -> None:
-        '''Optimized timing loop using hybrid sleeping/spinning for precision.'''
-        target_interval = self.interval
-        click = self.click_action
+    def _run_loop(self):
+        """High-frequency click loop with minimal overhead"""
+        click_func = self.mouse.click
+        btn = Button.left
         
-        # Local variable cache for maximizing loop performance
-        perf_counter = time.perf_counter
-        sleep = time.sleep
-
-        last_time = perf_counter()
-        while self._running:
-            now = perf_counter()
-            elapsed = now - last_time
+        while True:
+            with self._lock:
+                if not self.running:
+                    break
             
-            if elapsed >= target_interval:
-                click()
-                # Prevent cumulative delay drift
-                last_time = now - min(elapsed - target_interval, target_interval)
-                
-                # Sleep short of target time to accommodate OS scheduler overhead
-                if target_interval > 0.002:
-                    sleep(target_interval - 0.001)
-            else:
-                # Avoid CPU choking while keeping precision intact
-                remaining = target_interval - elapsed
-                if remaining > 0.0015:
-                    sleep(0.001)
+            click_func(btn)
+            # Use sleep for lower CPU usage than busy-wait
+            time.sleep(self.interval)
+
+if __name__ == '__main__':
+    clicker = AutoClicker(interval=0.05)
+    clicker.start()
+    time.sleep(2)
+    clicker.stop()
