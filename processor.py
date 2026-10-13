@@ -1,34 +1,38 @@
 import time
-import logging
+import threading
+from queue import Queue
 
-# Configure logging for the autoclicker module
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('processor')
+class ClickProcessor:
+    def __init__(self, interval_ms=10):
+        self.queue = Queue(maxsize=100)
+        self.interval = interval_ms / 1000.0
+        self.running = True
 
-def validate_inputs(interval, clicks):
-    """Ensures input parameters are within operational safety limits."""
-    if not isinstance(interval, (int, float)) or interval < 0.01:
-        raise ValueError("Interval must be at least 0.01 seconds.")
-    if not isinstance(clicks, int) or clicks < 0:
-        raise ValueError("Click count must be a non-negative integer.")
-    return True
+    def submit_click(self, x: int, y: int):
+        """Non-blocking submission of click coordinates."""
+        if not self.queue.full():
+            self.queue.put((x, y))
 
-def run_clicker_loop(interval: float, clicks: int):
-    """
-    Main processing loop for executing clicks with
-    validated parameters to prevent erratic system behavior.
-    """
-    try:
-        validate_inputs(interval, clicks)
-    except ValueError as e:
-        logger.error(f"Invalid configuration detected: {e}")
-        return
+    def _process_loop(self):
+        """Optimized execution loop using time.perf_counter."""
+        last_time = time.perf_counter()
+        while self.running:
+            current_time = time.perf_counter()
+            if current_time - last_time >= self.interval:
+                if not self.queue.empty():
+                    x, y = self.queue.get()
+                    self._execute_native_click(x, y)
+                    last_time = current_time
+            time.sleep(0.001)
 
-    remaining = clicks
-    while remaining > 0:
-        logger.info(f"Executing click. Remaining: {remaining}")
-        # Simulated mouse event execution
-        time.sleep(interval)
-        remaining -= 1
+    def _execute_native_click(self, x, y):
+        """Hardware-level click abstraction placeholder."""
+        pass
 
-    logger.info("Processing cycle completed successfully.")
+    def start(self):
+        self.thread = threading.Thread(target=self._process_loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.running = False
+        self.thread.join()
