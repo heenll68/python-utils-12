@@ -1,37 +1,32 @@
 import json
 import os
+from typing import Dict, Any
 
-class ConfigError(Exception):
-    """Custom exception for configuration loading issues."""
-    pass
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "interval": 0.1,
+    "button": "left",
+    "max_clicks": 1000,
+    "hotkey": "f6"
+}
 
-def load_config(filepath):
-    """Loads and validates JSON configuration for the autoclicker."""
+def load_config(filepath: str = "config.json") -> Dict[str, Any]:
+    """Loads configuration from a JSON file."""
     if not os.path.exists(filepath):
-        raise ConfigError(f"Configuration file not found: {filepath}")
-
+        save_config(DEFAULT_CONFIG, filepath)
+        return DEFAULT_CONFIG
+    
     try:
-        with open(filepath, 'r') as f:
-            config = json.load(f)
-    except json.JSONDecodeError as e:
-        raise ConfigError(f"Malformed JSON in configuration: {e}")
-    except PermissionError:
-        raise ConfigError(f"Insufficient permissions to read: {filepath}")
+        with open(filepath, "r") as f:
+            return {**DEFAULT_CONFIG, **json.load(f)}
+    except (json.JSONDecodeError, IOError):
+        return DEFAULT_CONFIG
 
-    # Validate mandatory fields
-    required_fields = ['click_interval', 'max_clicks']
-    for field in required_fields:
-        if field not in config:
-            raise ConfigError(f"Missing required field: {field}")
-        if not isinstance(config[field], (int, float)) or config[field] < 0:
-            raise ConfigError(f"Invalid value for {field}: must be positive number")
+def save_config(config: Dict[str, Any], filepath: str = "config.json") -> None:
+    """Persists configuration to a JSON file."""
+    with open(filepath, "w") as f:
+        json.dump(config, f, indent=4)
 
-    return config
-
-def get_default_config():
-    """Returns hardcoded safe defaults if file is missing."""
-    return {
-        "click_interval": 0.1,
-        "max_clicks": 1000,
-        "button": "left"
-    }
+if __name__ == "__main__":
+    # Module usage for local configuration validation
+    current_config = load_config()
+    print(f"Active configuration loaded: {current_config}")
