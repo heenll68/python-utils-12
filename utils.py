@@ -1,34 +1,29 @@
 import time
-import logging
 import pyautogui
+import logging
 
-# Configure logging for autoclicker operations
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('autoclicker')
+logger = logging.getLogger(__name__)
 
-def perform_click(x: int, y: int, interval: float = 0.1):
-    """Execute a mouse click at target coordinates."""
+def perform_click(x: int, y: int, interval: float = 0.1) -> None:
+    """Executes a mouse click at specified screen coordinates."""
     try:
-        pyautogui.click(x, y)
+        pyautogui.moveTo(x, y)
+        pyautogui.click()
         time.sleep(interval)
+    except pyautogui.FailSafeException:
+        logger.error("Fail-safe triggered, stopping execution")
+        raise
     except Exception as e:
-        logger.error(f"failed click at ({x}, {y}): {e}")
+        logger.error(f"Click failure at ({x}, {y}): {e}")
 
-def get_mouse_position():
-    """Retrieve current cursor coordinates."""
-    return pyautogui.position()
+def validate_coordinates(x: int, y: int) -> bool:
+    """Checks if coordinates are within the primary monitor bounds."""
+    width, height = pyautogui.size()
+    return 0 <= x <= width and 0 <= y <= height
 
-def safe_exit(message: str = "shutdown initiated"):
-    """Log shutdown and terminate execution."""
-    logger.info(message)
+def safe_shutdown(delay: int = 2) -> None:
+    """Graceful shutdown sequence for the autoclicker."""
+    logger.info("Initiating shutdown sequence...")
+    time.sleep(delay)
     exit(0)
-
-class ClickCoordinator:
-    """Manages repetition logic for mouse clicks."""
-    def __init__(self, repeat: int = 1):
-        self.repeat = repeat
-
-    def run_sequence(self, x: int, y: int):
-        for i in range(self.repeat):
-            logger.info(f"execution cycle {i+1}/{self.repeat}")
-            perform_click(x, y)
