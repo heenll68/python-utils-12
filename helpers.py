@@ -1,32 +1,22 @@
-import logging
-import pyautogui
-from typing import Tuple, Optional
+import time
+import random
+from typing import Tuple
 
-logger = logging.getLogger(__name__)
+def get_jittered_interval(base_interval: float, variance: float = 0.1) -> float:
+    """Calculate a random interval based on base and variance percentage."""
+    min_val = base_interval * (1 - variance)
+    max_val = base_interval * (1 + variance)
+    return random.uniform(min_val, max_val)
 
-def get_safe_coordinates(x: int, y: int) -> Optional[Tuple[int, int]]:
-    """Validates coordinates against current screen resolution."""
-    try:
-        screen_width, screen_height = pyautogui.size()
-        if 0 <= x <= screen_width and 0 <= y <= screen_height:
-            return (x, y)
-        logger.warning(f"Coordinates ({x}, {y}) out of screen bounds ({screen_width}x{screen_height}).")
-        return None
-    except Exception as e:
-        logger.error(f"Unexpected error during coordinate validation: {e}")
-        return None
+def format_click_position(x: int, y: int) -> str:
+    """Return human readable coordinates string."""
+    return f"({x}, {y})"
 
-def perform_safe_click(x: int, y: int, clicks: int = 1) -> bool:
-    """Executes click only if coordinates are confirmed safe."""
-    coords = get_safe_coordinates(x, y)
-    if coords:
-        try:
-            pyautogui.click(x=coords[0], y=coords[1], clicks=clicks)
-            return True
-        except pyautogui.FailSafeException:
-            logger.critical("Autoclicker fail-safe triggered by user.")
-            return False
-        except Exception as e:
-            logger.error(f"Click failure at ({x}, {y}): {e}")
-            return False
-    return False
+def throttle_execution(interval: float) -> None:
+    """Pause execution to respect timing constraints."""
+    time.sleep(interval)
+
+def validate_coordinates(x: int, y: int, screen_size: Tuple[int, int]) -> bool:
+    """Check if coordinates are within screen boundaries."""
+    width, height = screen_size
+    return 0 <= x < width and 0 <= y < height
