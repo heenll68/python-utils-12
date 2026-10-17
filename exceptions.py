@@ -1,49 +1,32 @@
-"""Custom exceptions for autoclicker runtime and edge case handling."""
+import time
+import functools
+import logging
 
+# Configure logger for autoclicker network operations
+logger = logging.getLogger('python-utils-12')
 
-class AutoClickerError(Exception):
-    """Base exception class for all autoclicker errors."""
-
-    pass
-
-
-class InvalidCoordinatesError(AutoClickerError):
-    """Raised when target click coordinates are out of bounds or invalid."""
-
-    def __init__(self, x: int, y: int, bounds: tuple[int, int, int, int]):
-        self.x = x
-        self.y = y
-        self.bounds = bounds
-        message = f"Coordinates ({x}, {y}) out of screen bounds {bounds}"
-        super().__init__(message)
-
-
-class RateLimitExceededError(AutoClickerError):
-    """Raised when requested clicks per second exceed safety limits."""
-
-    def __init__(self, requested_cps: float, max_cps: float = 100.0):
-        self.requested_cps = requested_cps
-        self.max_cps = max_cps
-        message = (
-            f"Click rate {requested_cps} CPS exceeds max limit of {max_cps} CPS"
-        )
-        super().__init__(message)
-
-
-class WindowNotFoundError(AutoClickerError):
-    """Raised when specified target window title is not active or present."""
-
-    def __init__(self, window_title: str):
-        self.window_title = window_title
-        message = f"Target application window '{window_title}' not found"
-        super().__init__(message)
-
-
-class PermissionDeniedError(AutoClickerError):
-    """Raised when OS blocks synthetic input events (e.g. lack of admin privileges)."""
-
-    def __init__(self, action: str = "send click events"):
-        message = (
-            f"System denied permission to {action}. Try running as admin."
-        )
-        super().__init__(message)
+def retry_network_op(retries=3, delay=2, backoff=2):
+    """
+    Decorator for retrying network operations with exponential backoff.
+    
+    :param retries: Number of attempts before giving up.
+    :param delay: Initial delay between retries in seconds.
+    :param backoff: Factor by which the delay increases.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for i in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    if i == retries - 1:
+                        logger.error(f"Final attempt {i+1} failed for {func.__name__}: {e}")
+                        raise
+                    
+                    logger.warning(f"Attempt {i+1} failed for {func.__name__}, retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
