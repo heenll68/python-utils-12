@@ -1,46 +1,39 @@
 import logging
-import json
-from datetime import datetime
-from pathlib import Path
+from logging.handlers import RotatingFileHandler
+import os
 
-# Configure autoclicker event logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('autoclicker')
+def setup_logger(name='autoclicker', log_file='autoclicker.log'):
+    """
+    Configure rotating file logger for session tracking.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
 
-LOG_FILE = Path('click_history.json')
+    # Prevent duplicate handlers if re-initialized
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-def log_click_event(coords: tuple, button: str, timestamp: float = None):
-    """Records click action to local persistent storage."""
-    data = {
-        'x': coords[0],
-        'y': coords[1],
-        'button': button,
-        'time': timestamp or datetime.now().timestamp()
-    }
+    # Create directory if missing
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
-    try:
-        history = []
-        if LOG_FILE.exists():
-            with open(LOG_FILE, 'r') as f:
-                history = json.load(f)
-        
-        history.append(data)
-        
-        with open(LOG_FILE, 'w') as f:
-            json.dump(history, f, indent=4)
-            
-        logger.info(f"Logged click at {coords}")
-    except (IOError, json.JSONDecodeError) as e:
-        logger.error(f"Failed to write click log: {e}")
+    # Setup rotation: 5MB per file, keep 3 backups
+    handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=5*1024*1024, 
+        backupCount=3
+    )
 
-def get_recent_clicks(limit: int = 10):
-    """Retrieves the last N recorded click events."""
-    if not LOG_FILE.exists():
-        return []
-    try:
-        with open(LOG_FILE, 'r') as f:
-            data = json.load(f)
-            return data[-limit:]
-    except Exception as e:
-        logger.error(f"Error reading log file: {e}")
-        return []
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Add console stream
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+
+    return logger
