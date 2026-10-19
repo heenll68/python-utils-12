@@ -1,38 +1,34 @@
 import time
-import threading
-from queue import Queue
+import random
+import pyautogui
 
-class ClickProcessor:
-    def __init__(self, interval_ms=10):
-        self.queue = Queue(maxsize=100)
-        self.interval = interval_ms / 1000.0
-        self.running = True
+def perform_click(x, y, delay_range=(0.1, 0.5)):
+    """Executes a click at coordinates with randomized delay."""
+    try:
+        pyautogui.moveTo(x, y)
+        time.sleep(random.uniform(*delay_range))
+        pyautogui.click()
+    except Exception as e:
+        print(f"Click failure at {x}, {y}: {e}")
 
-    def submit_click(self, x: int, y: int):
-        """Non-blocking submission of click coordinates."""
-        if not self.queue.full():
-            self.queue.put((x, y))
+def safe_move_and_click(x, y, duration=0.25):
+    """Smooth mouse transition to target before clicking."""
+    pyautogui.moveTo(x, y, duration=duration)
+    pyautogui.click()
 
-    def _process_loop(self):
-        """Optimized execution loop using time.perf_counter."""
-        last_time = time.perf_counter()
-        while self.running:
-            current_time = time.perf_counter()
-            if current_time - last_time >= self.interval:
-                if not self.queue.empty():
-                    x, y = self.queue.get()
-                    self._execute_native_click(x, y)
-                    last_time = current_time
-            time.sleep(0.001)
+def get_random_jitter(offset=5):
+    """Generates slight coordinate variations to mimic human behavior."""
+    jitter_x = random.randint(-offset, offset)
+    jitter_y = random.randint(-offset, offset)
+    return jitter_x, jitter_y
 
-    def _execute_native_click(self, x, y):
-        """Hardware-level click abstraction placeholder."""
-        pass
+def batch_click_sequence(coordinates, interval=1.0):
+    """Processes a list of (x, y) tuples with a set pause."""
+    for x, y in coordinates:
+        perform_click(x, y)
+        time.sleep(interval)
 
-    def start(self):
-        self.thread = threading.Thread(target=self._process_loop, daemon=True)
-        self.thread.start()
-
-    def stop(self):
-        self.running = False
-        self.thread.join()
+def is_screen_region_valid(x, y, width, height):
+    """Validates coordinates against current screen resolution."""
+    screen_width, screen_height = pyautogui.size()
+    return 0 <= x < screen_width and 0 <= y < screen_height
