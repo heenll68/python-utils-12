@@ -1,32 +1,29 @@
-import time
-import functools
-import logging
+class AutoclickerError(Exception):
+    """Base exception for all autoclicker issues."""
+    pass
 
-# Configure logger for autoclicker network operations
-logger = logging.getLogger('python-utils-12')
+class ConfigurationError(AutoclickerError):
+    """Raised when settings are invalid or missing."""
+    pass
 
-def retry_network_op(retries=3, delay=2, backoff=2):
-    """
-    Decorator for retrying network operations with exponential backoff.
-    
-    :param retries: Number of attempts before giving up.
-    :param delay: Initial delay between retries in seconds.
-    :param backoff: Factor by which the delay increases.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for i in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    if i == retries - 1:
-                        logger.error(f"Final attempt {i+1} failed for {func.__name__}: {e}")
-                        raise
-                    
-                    logger.warning(f"Attempt {i+1} failed for {func.__name__}, retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+class PermissionDeniedError(AutoclickerError):
+    """Raised when OS prevents input injection."""
+    pass
+
+class CoordinateOutOfBoundsError(AutoclickerError):
+    """Raised when click target is off-screen."""
+    pass
+
+class ProcessInterruptError(AutoclickerError):
+    """Raised when autoclicker loop is forced stop."""
+    pass
+
+def raise_if_invalid(condition: bool, message: str, exception_cls: type = AutoclickerError):
+    """Utility to raise custom exceptions based on boolean checks."""
+    if not condition:
+        raise exception_cls(message)
+
+def handle_critical_failure(e: Exception):
+    """Standardized logging for application crashes."""
+    print(f"[CRITICAL] {type(e).__name__}: {e}")
+    raise e
