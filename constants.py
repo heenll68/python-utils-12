@@ -1,39 +1,40 @@
-import sys
 import platform
 
-# Optimized settings for low-latency click simulation
-# Cache system-specific constants to avoid repeated syscalls
-
+# Operating system identification
 IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
 IS_LINUX = platform.system() == "Linux"
 
-# Performance thresholds for input handling
-MIN_CLICK_INTERVAL = 0.001  # 1ms minimum throttle
-MAX_CLICK_QUEUE_SIZE = 1000
+# Mouse button identifiers for automation
+MOUSE_LEFT = "left"
+MOUSE_RIGHT = "right"
+MOUSE_MIDDLE = "middle"
 
-# Shared memory layout configuration for high-frequency updates
-BUFFER_SIZE = 4096
-HEARTBEAT_TIMEOUT = 5.0
+# Standard time delays in seconds
+MIN_INTERVAL = 0.01
+DEFAULT_INTERVAL = 0.1
+MAX_INTERVAL = 60.0
 
-def get_performance_mode():
-    """Determine if high-performance threading is supported."""
-    # High performance requires threading/multiprocessing priority
-    # Only available on POSIX systems or with administrative privileges
-    return "high" if IS_LINUX or IS_MACOS else "standard"
+# Configuration defaults
+DEFAULT_CLICK_COUNT = 1
+DEFAULT_KEY_BIND = "f8"
 
-# Global flag for hardware acceleration status
-HW_ACCEL_ENABLED = True
+# Status codes for the main loop
+STATUS_IDLE = 0
+STATUS_RUNNING = 1
+STATUS_PAUSED = 2
+STATUS_STOPPED = 3
 
-# Pre-computed key mapping constants
-KEY_MAP = {
-    "LEFT": 0x01,
-    "RIGHT": 0x02,
-    "MIDDLE": 0x04,
-}
+# Key event types
+EVENT_PRESS = "press"
+EVENT_RELEASE = "release"
 
-__all__ = [
-    "IS_WINDOWS", "IS_MACOS", "IS_LINUX", 
-    "MIN_CLICK_INTERVAL", "MAX_CLICK_QUEUE_SIZE", 
-    "BUFFER_SIZE", "HW_ACCEL_ENABLED", "KEY_MAP"
-]
+# Coordinates validation boundaries
+MIN_SCREEN_X = 0
+MIN_SCREEN_Y = 0
+MAX_SCREEN_X = 10000
+MAX_SCREEN_Y = 10000
+
+def get_app_title():
+    """Return the project name identifier."""
+    return "python-utils-12-autoclicker"
