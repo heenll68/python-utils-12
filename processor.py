@@ -1,34 +1,40 @@
 import time
-import random
+import threading
 import pyautogui
 
-def perform_click(x, y, delay_range=(0.1, 0.5)):
-    """Executes a click at coordinates with randomized delay."""
-    try:
-        pyautogui.moveTo(x, y)
-        time.sleep(random.uniform(*delay_range))
-        pyautogui.click()
-    except Exception as e:
-        print(f"Click failure at {x}, {y}: {e}")
+class ClickProcessor:
+    """Handles automated clicking sequences with thread safety."""
 
-def safe_move_and_click(x, y, duration=0.25):
-    """Smooth mouse transition to target before clicking."""
-    pyautogui.moveTo(x, y, duration=duration)
-    pyautogui.click()
+    def __init__(self, interval: float = 0.1, button: str = 'left'):
+        self.interval = interval
+        self.button = button
+        self.active = False
+        self._lock = threading.Lock()
 
-def get_random_jitter(offset=5):
-    """Generates slight coordinate variations to mimic human behavior."""
-    jitter_x = random.randint(-offset, offset)
-    jitter_y = random.randint(-offset, offset)
-    return jitter_x, jitter_y
+    def start(self):
+        """Starts the clicker thread if not already running."""
+        with self._lock:
+            if not self.active:
+                self.active = True
+                threading.Thread(target=self._run, daemon=True).start()
 
-def batch_click_sequence(coordinates, interval=1.0):
-    """Processes a list of (x, y) tuples with a set pause."""
-    for x, y in coordinates:
-        perform_click(x, y)
-        time.sleep(interval)
+    def stop(self):
+        """Signals the clicker thread to terminate."""
+        with self._lock:
+            self.active = False
 
-def is_screen_region_valid(x, y, width, height):
-    """Validates coordinates against current screen resolution."""
-    screen_width, screen_height = pyautogui.size()
-    return 0 <= x < screen_width and 0 <= y < screen_height
+    def _run(self):
+        """Internal loop for continuous mouse clicks."""
+        while True:
+            with self._lock:
+                if not self.active:
+                    break
+            
+            pyautogui.click(button=self.button)
+            time.sleep(self.interval)
+
+    def update_settings(self, interval: float, button: str):
+        """Updates click timing and mouse button preference."""
+        with self._lock:
+            self.interval = interval
+            self.button = button
