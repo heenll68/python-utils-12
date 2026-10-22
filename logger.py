@@ -1,39 +1,34 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from datetime import datetime
 
-def setup_logger(name='autoclicker', log_file='autoclicker.log'):
-    """
-    Configure rotating file logger for session tracking.
-    """
+# Configure centralized application logging
+def setup_logger(name: str = "autoclicker") -> logging.Logger:
+    """Initializes a standard console logger for the project."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
-    # Prevent duplicate handlers if re-initialized
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
 
-    # Create directory if missing
-    log_dir = os.path.dirname(log_file)
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    # Setup rotation: 5MB per file, keep 3 backups
-    handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=5*1024*1024, 
-        backupCount=3
-    )
-
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    # Add console stream
-    console = logging.StreamHandler()
-    console.setFormatter(formatter)
-    logger.addHandler(console)
+        # Output to stdout for easier integration with task runners
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     return logger
+
+# Instantiate default logger for utility modules
+logger = setup_logger()
+
+def log_event(message: str, level: str = "info") -> None:
+    """Helper for quick diagnostic message piping."""
+    if level.lower() == "error":
+        logger.error(message)
+    elif level.lower() == "warning":
+        logger.warning(message)
+    else:
+        logger.info(message)
