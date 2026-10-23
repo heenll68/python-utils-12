@@ -1,34 +1,35 @@
 import logging
-import sys
-from datetime import datetime
+from logging.handlers import RotatingFileHandler
+import os
 
-# Configure centralized application logging
-def setup_logger(name: str = "autoclicker") -> logging.Logger:
-    """Initializes a standard console logger for the project."""
+def setup_logger(name: str, log_file: str = 'autoclicker.log') -> logging.Logger:
+    """
+    Configures a logger with rotation to prevent file bloat.
+    Maintains 5 files at 1MB each.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
+    # Prevent duplicate handlers if function is called multiple times
     if not logger.handlers:
-        formatter = logging.Formatter(
-            "%(asctime)s | %(levelname)-8s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=1*1024*1024, 
+            backupCount=5
         )
-
-        # Output to stdout for easier integration with task runners
-        handler = logging.StreamHandler(sys.stdout)
+        
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        
+        # Optional: Log to console as well
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
     return logger
 
-# Instantiate default logger for utility modules
-logger = setup_logger()
-
-def log_event(message: str, level: str = "info") -> None:
-    """Helper for quick diagnostic message piping."""
-    if level.lower() == "error":
-        logger.error(message)
-    elif level.lower() == "warning":
-        logger.warning(message)
-    else:
-        logger.info(message)
+# Default application logger
+logger = setup_logger('autoclicker')
