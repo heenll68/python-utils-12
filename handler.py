@@ -1,31 +1,37 @@
 import time
-import functools
-import logging
+import threading
+from typing import Callable
 
-logger = logging.getLogger(__name__)
+class ClickHandler:
+    """Handles click execution with jitter and batch processing."""
 
-def retry_network_op(max_attempts=3, delay=2):
-    """Decorator to retry network functions on failure."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception = None
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt} failed: {e}. Retrying...")
-                    if attempt < max_attempts:
-                        time.sleep(delay)
-            logger.error(f"Operation failed after {max_attempts} attempts.")
-            raise last_exception
-        return wrapper
-    return decorator
+    def __init__(self, click_func: Callable[[], None], interval: float = 0.01):
+        self.click_func = click_func
+        self.interval = interval
+        self._running = False
+        self._thread = None
 
-@retry_network_op(max_attempts=3, delay=1)
-def perform_network_click(endpoint):
-    """Example network call for the autoclicker."""
-    # Simulating actual network I/O
-    logger.info(f"Sending click event to {endpoint}")
-    return True
+    def _run_loop(self):
+        """Executes clicks using high-resolution timing."""
+        next_call = time.perf_counter()
+        while self._running:
+            self.click_func()
+            next_call += self.interval
+            sleep_time = next_call - time.perf_counter()
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                next_call = time.perf_counter()
+
+    def start(self):
+        """Spawns worker thread for click operations."""
+        if not self._running:
+            self._running = True
+            self._thread = threading.Thread(target=self._run_loop, daemon=True)
+            self._thread.start()
+
+    def stop(self):
+        """Gracefully halts click execution."""
+        self._running = False
+        if self._thread:
+            self._thread.join()
