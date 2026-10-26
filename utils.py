@@ -1,29 +1,34 @@
 import time
-import pyautogui
+import functools
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_click(x: int, y: int, interval: float = 0.1) -> None:
-    """Executes a mouse click at specified screen coordinates."""
-    try:
-        pyautogui.moveTo(x, y)
-        pyautogui.click()
-        time.sleep(interval)
-    except pyautogui.FailSafeException:
-        logger.error("Fail-safe triggered, stopping execution")
-        raise
-    except Exception as e:
-        logger.error(f"Click failure at ({x}, {y}): {e}")
+def retry_network_op(retries=3, delay=2, backoff=2):
+    """Decorator for retrying network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            current_delay = delay
+            while attempt < retries:
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    attempt += 1
+                    if attempt == retries:
+                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
+                        raise
+                    
+                    logger.warning(f"Retry {attempt}/{retries} for {func.__name__} due to {e}")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-def validate_coordinates(x: int, y: int) -> bool:
-    """Checks if coordinates are within the primary monitor bounds."""
-    width, height = pyautogui.size()
-    return 0 <= x <= width and 0 <= y <= height
-
-def safe_shutdown(delay: int = 2) -> None:
-    """Graceful shutdown sequence for the autoclicker."""
-    logger.info("Initiating shutdown sequence...")
-    time.sleep(delay)
-    exit(0)
+@retry_network_op(retries=3, delay=1)
+def ping_server(url: str) -> bool:
+    """Example network operation protected by retry logic."""
+    # Placeholder for actual socket or request logic
+    logger.info(f"Pinging {url}...")
+    return True
