@@ -1,34 +1,40 @@
-import time
-import functools
-import logging
+import json
+import os
+from typing import Dict, Any
 
-logger = logging.getLogger(__name__)
+def load_click_config(filepath: str) -> Dict[str, Any]:
+    """Loads autoclicker parameters from a JSON file."""
+    if not os.path.exists(filepath):
+        return {"interval": 0.1, "button": "left", "repeats": 1}
+    
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {"interval": 0.1, "button": "left", "repeats": 1}
 
-def retry_network_op(retries=3, delay=2, backoff=2):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            attempt = 0
-            current_delay = delay
-            while attempt < retries:
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    attempt += 1
-                    if attempt == retries:
-                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
-                        raise
-                    
-                    logger.warning(f"Retry {attempt}/{retries} for {func.__name__} due to {e}")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def save_click_config(filepath: str, data: Dict[str, Any]) -> bool:
+    """Persists autoclicker settings to disk."""
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except IOError:
+        return False
 
-@retry_network_op(retries=3, delay=1)
-def ping_server(url: str) -> bool:
-    """Example network operation protected by retry logic."""
-    # Placeholder for actual socket or request logic
-    logger.info(f"Pinging {url}...")
+def validate_click_params(params: Dict[str, Any]) -> bool:
+    """Verifies schema and ranges for click data."""
+    required = {"interval", "button", "repeats"}
+    if not all(key in params for key in required):
+        return False
+    
+    if not isinstance(params["interval"], (int, float)) or params["interval"] < 0.001:
+        return False
+        
+    if params["button"] not in ["left", "right", "middle"]:
+        return False
+        
+    if not isinstance(params["repeats"], int) or params["repeats"] < 0:
+        return False
+        
     return True
