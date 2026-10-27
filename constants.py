@@ -5,36 +5,30 @@ IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
 IS_LINUX = platform.system() == "Linux"
 
-# Mouse button identifiers for automation
-MOUSE_LEFT = "left"
-MOUSE_RIGHT = "right"
-MOUSE_MIDDLE = "middle"
+# Standard button identifiers for input simulation
+LEFT_BUTTON = "left"
+RIGHT_BUTTON = "right"
+MIDDLE_BUTTON = "middle"
 
-# Standard time delays in seconds
-MIN_INTERVAL = 0.01
-DEFAULT_INTERVAL = 0.1
-MAX_INTERVAL = 60.0
+# Default operation constraints
+DEFAULT_CLICK_INTERVAL = 0.1
+MAX_CLICK_INTERVAL = 60.0
+MIN_CLICK_INTERVAL = 0.001
 
-# Configuration defaults
-DEFAULT_CLICK_COUNT = 1
-DEFAULT_KEY_BIND = "f8"
+# Key constants for hotkey registration
+KEY_START_STOP = "f6"
+KEY_EXIT = "f7"
 
-# Status codes for the main loop
-STATUS_IDLE = 0
-STATUS_RUNNING = 1
-STATUS_PAUSED = 2
-STATUS_STOPPED = 3
+# GUI configuration placeholders
+DEFAULT_WINDOW_TITLE = "Python Utils 12 - Autoclicker"
+DEFAULT_WINDOW_SIZE = "300x200"
 
-# Key event types
-EVENT_PRESS = "press"
-EVENT_RELEASE = "release"
+# Valid button choices for dropdown selections
+VALID_BUTTONS = [LEFT_BUTTON, RIGHT_BUTTON, MIDDLE_BUTTON]
 
-# Coordinates validation boundaries
-MIN_SCREEN_X = 0
-MIN_SCREEN_Y = 0
-MAX_SCREEN_X = 10000
-MAX_SCREEN_Y = 10000
+# Configuration file path
+CONFIG_FILE_PATH = "settings.json"
 
-def get_app_title():
-    """Return the project name identifier."""
-    return "python-utils-12-autoclicker"
+# Logging format constants
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
