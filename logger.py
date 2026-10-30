@@ -1,33 +1,36 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from typing import Optional
 
-def setup_logger(name: str = 'autoclicker', log_file: str = 'autoclicker.log') -> logging.Logger:
-    """Configures a rotating file logger for the application."""
+def setup_logger(name: str, log_file: Optional[str] = None) -> logging.Logger:
+    """Configures a standardized logger with robust error handling."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
-    # Prevent duplicate handlers if re-initialized
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # Set up rotating file handler: 5MB per file, keep 3 backups
-    handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=5 * 1024 * 1024, 
-        backupCount=3
-    )
-    
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    
-    logger.addHandler(handler)
-    
-    # Also log to console for development visibility
-    console_handler = logging.StreamHandler()
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    
+
+    # File handler with error recovery
+    if log_file:
+        try:
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except (IOError, PermissionError) as e:
+            logger.error(f"Failed to initialize log file {log_file}: {e}")
+            # Fallback to stdout only if file access fails
+            
     return logger
+
+def log_execution_error(logger: logging.Logger, error: Exception) -> None:
+    """Logs specific autoclicker operational exceptions for debugging."""
+    if isinstance(error, KeyboardInterrupt):
+        logger.info("Autoclicker execution stopped by user.")
+    elif isinstance(error, RuntimeError):
+        logger.error(f"Runtime critical error: {error}")
+    else:
+        logger.exception(f"Unexpected error encountered: {type(error).__name__}")
