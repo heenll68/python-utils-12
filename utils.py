@@ -1,40 +1,47 @@
 import time
-import pyautogui
-from typing import Tuple, Optional
+import logging
+import urllib.error
+import urllib.request
+from typing import Callable, Any, Tuple
 
-def perform_click(position: Tuple[int, int], interval: float = 0.1) -> bool:
+logger = logging.getLogger(__name__)
+
+
+def retry_network_operation(
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    exceptions: Tuple[type[Exception], ...] = (urllib.error.URLError, TimeoutError, ConnectionError)
+):
     """
-    Executes a mouse click at the specified coordinate.
-
-    Args:
-        position: A tuple of (x, y) coordinates.
-        interval: Time to wait before clicking in seconds.
-
-    Returns:
-        bool: True if successful, False otherwise.
+    Decorator to retry network requests with exponential backoff for autoclicker syncing.
     """
-    try:
-        pyautogui.moveTo(position[0], position[1])
-        time.sleep(interval)
-        pyautogui.click()
-        return True
-    except pyautogui.FailSafeException:
-        return False
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            attempts = 0
+            while attempts < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as exc:
+                    attempts += 1
+                    if attempts >= max_retries:
+                        logger.error("Network request failed after %d attempts: %s", max_retries, exc)
+                        raise
+                    
+                    delay = backoff_factor * (2 ** (attempts - 1))
+                    logger.warning(
+                        "Network error encountered: %s. Retrying in %.2fs (Attempt %d/%d)",
+                        exc, delay, attempts, max_retries
+                    )
+                    time.sleep(delay)
+        return wrapper
+    return decorator
 
-def get_mouse_position() -> Tuple[int, int]:
-    """
-    Retrieves the current cursor coordinates.
 
-    Returns:
-        Tuple[int, int]: The (x, y) coordinates of the mouse.
+@retry_network_operation(max_retries=3, backoff_factor=0.5)
+def fetch_remote_config(url: str, timeout: int = 5) -> str:
     """
-    return pyautogui.position()
-
-def safe_sleep(seconds: float) -> None:
+    Fetches remote autoclicker configuration or update metadata.
     """
-    Pauses execution for a set duration.
-
-    Args:
-        seconds: The duration in seconds.
-    """
-    time.sleep(seconds)
+    req = urllib.request.Request(url, headers={"User-Agent": "AutoClicker/12.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return response.read().decode("utf-8")
