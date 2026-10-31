@@ -1,50 +1,45 @@
+import json
 import time
-import logging
-from typing import Tuple, Optional, Callable
+from typing import List, Dict, Any
 
-logger = logging.getLogger(__name__)
+class ClickDataProcessor:
+    """Processes and normalizes click sequences for autoclicker playback."""
 
+    def __init__(self, min_interval_ms: float = 10.0, default_button: str = "left"):
+        self.min_interval_ms = min_interval_ms
+        self.default_button = default_button
 
-class ClickProcessor:
-    """Processes click events with boundary safety and error handling."""
+    def sanitize_sequence(self, raw_clicks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Validates and cleans raw click sequence data."""
+        processed = []
+        for item in raw_clicks:
+            x = max(0, int(item.get("x", 0)))
+            y = max(0, int(item.get("y", 0)))
+            delay = float(item.get("delay_ms", self.min_interval_ms))
+            if delay < self.min_interval_ms:
+                delay = self.min_interval_ms
 
-    def __init__(self, screen_bounds: Tuple[int, int] = (1920, 1080), max_cps: float = 100.0):
-        self.screen_bounds = screen_bounds
-        self.max_cps = max_cps
-        self.failsafe_triggered = False
+            button = str(item.get("button", self.default_button)).lower()
+            if button not in ("left", "right", "middle"):
+                button = self.default_button
 
-    def validate_coordinates(self, x: int, y: int) -> bool:
-        """Check if click target coordinates stay within safe screen bounds."""
-        max_x, max_y = self.screen_bounds
-        if x < 0 or y < 0 or x > max_x or y > max_y:
-            logger.warning(f"Target coordinates ({x}, {y}) out of screen bounds {self.screen_bounds}")
-            return False
-        return True
+            processed.append({
+                "x": x,
+                "y": y,
+                "delay_ms": delay,
+                "button": button,
+                "double": bool(item.get("double", False))
+            })
+        return processed
 
-    def execute_click(self, x: int, y: int, interval: float, click_func: Optional[Callable[[int, int], None]] = None) -> bool:
-        """Safely run click action while handling invalid inputs and unexpected errors."""
-        if self.failsafe_triggered:
-            logger.error("Click execution aborted: Failsafe state active")
-            return False
-
-        if not self.validate_coordinates(x, y):
-            return False
-
-        # Clamp unsafe click intervals to prevent infinite or CPU-hogging loops
-        if interval <= 0 or (1.0 / interval) > self.max_cps:
-            safe_interval = max(1.0 / self.max_cps, 0.001)
-            logger.warning(f"Invalid interval {interval}s; corrected to {safe_interval}s")
-            interval = safe_interval
-
-        try:
-            if click_func:
-                click_func(x, y)
-            time.sleep(interval)
-            return True
-        except (PermissionError, OSError) as e:
-            logger.error(f"OS hardware input error at ({x}, {y}): {e}")
-            return False
-        except Exception as e:
-            logger.critical(f"Unhandled error during click dispatch: {e}")
-            self.failsafe_triggered = True
-            return False
+    def export_profile(self, profile_name: str, click_data: List[Dict[str, Any]]) -> str:
+        """Formats processed click sequence into a serialized profile string."""
+        sanitized = self.sanitize_sequence(click_data)
+        payload = {
+            "profile_name": profile_name,
+            "version": "1.2",
+            "created_at": time.time(),
+            "clicks": sanitized,
+            "total_clicks": len(sanitized)
+        }
+        return json.dumps(payload, indent=2)
