@@ -1,56 +1,50 @@
-import functools
-import logging
+import random
 import time
-from typing import Callable, Type, Tuple, Any
-
-logger = logging.getLogger(__name__)
-
-def retry_network_op(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,)
-) -> Callable:
-    """
-    Decorator that retries a network function upon failure using exponential backoff.
-    
-    Used in autoclicker operations like remote preset sync and update checks.
-    """
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for attempt in range(1, max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as err:
-                    if attempt == max_retries:
-                        logger.error(
-                            f"Network operation '{func.__name__}' failed after {max_retries} attempts: {err}"
-                        )
-                        raise
-                    
-                    logger.warning(
-                        f"Attempt {attempt}/{max_retries} for '{func.__name__}' failed ({err}). "
-                        f"Retrying in {current_delay:.2f}s..."
-                    )
-                    time.sleep(current_delay)
-                    current_delay *= backoff_factor
-        return wrapper
-    return decorator
+from typing import Tuple
 
 
-def fetch_remote_presets(url: str, timeout: int = 5) -> dict:
-    """
-    Fetches remote click presets with built-in network retry logic.
-    """
-    import urllib.request
-    import json
+def calculate_jitter_delay(base_interval: float, max_jitter: float) -> float:
+    """Calculate a randomized delay interval to simulate human clicking behavior."""
+    if base_interval <= 0:
+        return 0.0
+    jitter = random.uniform(-max_jitter, max_jitter)
+    return max(0.001, base_interval + jitter)
 
-    @retry_network_op(max_retries=3, delay=0.5, exceptions=(Exception,))
-    def _request():
-        req = urllib.request.Request(url, headers={"User-Agent": "AutoClicker-Utils/1.0"})
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
 
-    return _request()
+def clamp_coordinates(
+    x: int, y: int, screen_width: int, screen_height: int
+) -> Tuple[int, int]:
+    """Ensure clicking coordinates remain within screen boundaries."""
+    clamped_x = max(0, min(x, screen_width - 1))
+    clamped_y = max(0, min(y, screen_height - 1))
+    return clamped_x, clamped_y
+
+
+def parse_interval(interval_str: str) -> float:
+    """Parse time interval strings into floating point seconds."""
+    clean_str = interval_str.strip().lower()
+    if clean_str.endswith("ms"):
+        return float(clean_str[:-2]) / 1000.0
+    elif clean_str.endswith("s"):
+        return float(clean_str[:-1])
+    return float(clean_str)
+
+
+class PrecisionTimer:
+    """High-precision timer for regulating autoclicker intervals."""
+
+    def __init__(self, interval: float) -> None:
+        self.interval = interval
+        self._last_time = time.perf_counter()
+
+    def reset(self) -> None:
+        """Reset the timer starting reference time."""
+        self._last_time = time.perf_counter()
+
+    def should_trigger(self) -> bool:
+        """Check if enough time has elapsed for the next action."""
+        now = time.perf_counter()
+        if now - self._last_time >= self.interval:
+            self._last_time = now
+            return True
+        return False
