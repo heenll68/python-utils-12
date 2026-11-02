@@ -1,45 +1,38 @@
-import json
+import pyautogui
 import time
-from typing import List, Dict, Any
+import logging
 
-class ClickDataProcessor:
-    """Processes and normalizes click sequences for autoclicker playback."""
+class ClickProcessor:
+    """Handles click operations and autoclicker execution loops."""
+    
+    def __init__(self, interval: float = 0.1):
+        self.interval = interval
+        self.is_running = False
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger("ClickProcessor")
 
-    def __init__(self, min_interval_ms: float = 10.0, default_button: str = "left"):
-        self.min_interval_ms = min_interval_ms
-        self.default_button = default_button
+    def start(self, duration: int):
+        """Executes mouse clicks for a specified duration."""
+        self.is_running = True
+        self.logger.info(f"Starting autoclicker for {duration} seconds")
+        
+        end_time = time.time() + duration
+        try:
+            while self.is_running and time.time() < end_time:
+                pyautogui.click()
+                time.sleep(self.interval)
+        except Exception as e:
+            self.logger.error(f"Click execution error: {e}")
+        finally:
+            self.stop()
 
-    def sanitize_sequence(self, raw_clicks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Validates and cleans raw click sequence data."""
-        processed = []
-        for item in raw_clicks:
-            x = max(0, int(item.get("x", 0)))
-            y = max(0, int(item.get("y", 0)))
-            delay = float(item.get("delay_ms", self.min_interval_ms))
-            if delay < self.min_interval_ms:
-                delay = self.min_interval_ms
+    def stop(self):
+        """Signals cessation of click operations."""
+        self.is_running = False
+        self.logger.info("Autoclicker stopped")
 
-            button = str(item.get("button", self.default_button)).lower()
-            if button not in ("left", "right", "middle"):
-                button = self.default_button
-
-            processed.append({
-                "x": x,
-                "y": y,
-                "delay_ms": delay,
-                "button": button,
-                "double": bool(item.get("double", False))
-            })
-        return processed
-
-    def export_profile(self, profile_name: str, click_data: List[Dict[str, Any]]) -> str:
-        """Formats processed click sequence into a serialized profile string."""
-        sanitized = self.sanitize_sequence(click_data)
-        payload = {
-            "profile_name": profile_name,
-            "version": "1.2",
-            "created_at": time.time(),
-            "clicks": sanitized,
-            "total_clicks": len(sanitized)
-        }
-        return json.dumps(payload, indent=2)
+    def update_interval(self, new_interval: float):
+        """Adjustment of delay between clicks."""
+        if new_interval > 0:
+            self.interval = new_interval
+            self.logger.info(f"Interval updated to {new_interval}s")
