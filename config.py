@@ -1,40 +1,34 @@
 import json
 import os
-from typing import Any, Dict
 
-DEFAULT_CONFIG = {
-    "interval": 0.1,
-    "button": "left",
-    "repeat": 0,
-    "hotkey": "f6"
-}
+class Config:
+    """Manages autoclicker runtime settings."""
+    DEFAULTS = {
+        "interval": 0.1,
+        "button": "left",
+        "hotkey": "f8",
+        "max_clicks": 0
+    }
 
-def load_config(filepath: str = "config.json") -> Dict[str, Any]:
-    """
-    Loads configuration from a JSON file with fallback to defaults.
-    If file is missing or invalid, initializes with standard values.
-    """
-    config = DEFAULT_CONFIG.copy()
+    def __init__(self, config_path="config.json"):
+        self.path = config_path
+        self.settings = self.load()
 
-    if not os.path.exists(filepath):
-        _save_config(filepath, config)
-        return config
+    def load(self):
+        if os.path.exists(self.path):
+            try:
+                with open(self.path, "r") as f:
+                    return {**self.DEFAULTS, **json.load(f)}
+            except (json.JSONDecodeError, IOError):
+                pass
+        return self.DEFAULTS.copy()
 
-    try:
-        with open(filepath, "r") as f:
-            user_config = json.load(f)
-            config.update(user_config)
-    except (json.JSONDecodeError, IOError):
-        pass
+    def save(self):
+        try:
+            with open(self.path, "w") as f:
+                json.dump(self.settings, f, indent=4)
+        except IOError as e:
+            print(f"Configuration save failure: {e}")
 
-    return config
-
-def _save_config(filepath: str, config: Dict[str, Any]) -> None:
-    """
-    Persists the provided configuration dictionary to the filesystem.
-    """
-    try:
-        with open(filepath, "w") as f:
-            json.dump(config, f, indent=4)
-    except IOError:
-        pass
+    def get(self, key):
+        return self.settings.get(key, self.DEFAULTS.get(key))
