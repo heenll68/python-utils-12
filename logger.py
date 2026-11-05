@@ -2,35 +2,46 @@ import logging
 import sys
 from typing import Optional
 
-def setup_logger(name: str, log_file: Optional[str] = None) -> logging.Logger:
-    """Configures a standardized logger with robust error handling."""
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    Configures and returns a logger instance for the autoclicker.
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    Args:
+        name: The name of the logger module.
+        level: The logging severity level.
 
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    Returns:
+        A configured logging.Logger object.
+    """
+    logger: logging.Logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-    # File handler with error recovery
-    if log_file:
-        try:
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-        except (IOError, PermissionError) as e:
-            logger.error(f"Failed to initialize log file {log_file}: {e}")
-            # Fallback to stdout only if file access fails
-            
+    handler: logging.StreamHandler = logging.StreamHandler(sys.stdout)
+    formatter: logging.Formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    handler.setFormatter(formatter)
+    if not logger.handlers:
+        logger.addHandler(handler)
+        
     return logger
 
-def log_execution_error(logger: logging.Logger, error: Exception) -> None:
-    """Logs specific autoclicker operational exceptions for debugging."""
-    if isinstance(error, KeyboardInterrupt):
-        logger.info("Autoclicker execution stopped by user.")
-    elif isinstance(error, RuntimeError):
-        logger.error(f"Runtime critical error: {error}")
-    else:
-        logger.exception(f"Unexpected error encountered: {type(error).__name__}")
+def log_event(logger: logging.Logger, message: str, level: str = "info") -> None:
+    """
+    Helper to log application events with specific levels.
+
+    Args:
+        logger: The logger instance to use.
+        message: The message string to record.
+        level: The severity level string.
+    """
+    levels: dict = {
+        "debug": logger.debug,
+        "info": logger.info,
+        "warning": logger.warning,
+        "error": logger.error
+    }
+    
+    log_func = levels.get(level.lower(), logger.info)
+    log_func(message)
