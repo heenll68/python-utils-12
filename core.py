@@ -1,34 +1,39 @@
 import time
 import pyautogui
-from typing import Optional
+import logging
 
-class AutoClicker:
-    """Core engine for automated mouse clicking operations."""
+# Configure logging for debugging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    def __init__(self, interval: float = 0.1, button: str = 'left'):
-        self.interval = interval
-        self.button = button
-        self.is_running = False
+def perform_click(x, y, interval=0.1):
+    """Executes a click at screen coordinates with safety boundaries."""
+    try:
+        # Screen dimensions validation
+        screen_width, screen_height = pyautogui.size()
+        if not (0 <= x < screen_width and 0 <= y < screen_height):
+            raise ValueError(f"Coordinates ({x}, {y}) outside screen bounds ({screen_width}x{screen_height})")
 
-    def start_clicking(self, duration: Optional[int] = None) -> None:
-        """Executes clicks until duration expires or stopped."""
-        self.is_running = True
-        start_time = time.time()
+        # Fail-safe check
+        pyautogui.FAILSAFE = True
+        
+        # Execute action
+        pyautogui.click(x, y)
+        time.sleep(interval)
+        
+    except pyautogui.FailSafeException:
+        logger.error("Fail-safe triggered: mouse moved to corner")
+        raise
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid click parameters: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error during click: {e}")
 
+def run_autoclicker(target_coords, iterations=100):
+    """Main loop handler with error suppression."""
+    for i in range(iterations):
         try:
-            while self.is_running:
-                if duration and (time.time() - start_time) > duration:
-                    break
-                
-                pyautogui.click(button=self.button)
-                time.sleep(self.interval)
-        except KeyboardInterrupt:
-            self.stop_clicking()
-
-    def stop_clicking(self) -> None:
-        """Graceful termination of clicking sequence."""
-        self.is_running = False
-
-if __name__ == '__main__':
-    clicker = AutoClicker(interval=0.5)
-    clicker.start_clicking(duration=10)
+            perform_click(*target_coords)
+        except Exception as e:
+            logger.warning(f"Iteration {i} failed: {e}. Skipping.")
+            continue
