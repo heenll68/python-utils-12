@@ -1,31 +1,32 @@
 import logging
-import functools
-import time
-from typing import Callable, Any
+from logging.handlers import RotatingFileHandler
+import os
 
-# Configure optimized logging for high-frequency events
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('autoclicker')
+def setup_logger(name: str = "autoclicker", log_file: str = "app.log") -> logging.Logger:
+    """
+    Configures a rotating file logger for the autoclicker application.
+    Limits file size to 1MB and keeps 3 backup files.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
 
-def performance_monitor(func: Callable) -> Callable:
-    """Decorator for tracking execution overhead of click actions."""
-    @functools.lru_cache(maxsize=128)
-    def cached_timer(f_name: str) -> str:
-        return f"Execution speed logged for {f_name}"
+    # Prevent duplicate handlers if setup is called multiple times
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start_time = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start_time
+        # Rotating file handler configuration
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=1024 * 1024, backupCount=3
+        )
+        file_handler.setFormatter(formatter)
         
-        # Only log excessive latency to reduce IO bottleneck
-        if duration > 0.05:
-            logger.warning(f"High latency detected in {func.__name__}: {duration:.4f}s")
-        return result
-    return wrapper
+        # Stream handler for console visibility
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
 
-def batch_log(messages: list[str]) -> None:
-    """Batch processing to reduce system call overhead."""
-    if messages:
-        logger.info(" | ".join(messages))
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+
+    return logger
