@@ -1,47 +1,31 @@
 import logging
-import sys
-from typing import Optional
+import functools
+import time
+from typing import Callable, Any
 
-def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Configures and returns a logger instance for the autoclicker.
+# Configure optimized logging for high-frequency events
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('autoclicker')
 
-    Args:
-        name: The name of the logger module.
-        level: The logging severity level.
+def performance_monitor(func: Callable) -> Callable:
+    """Decorator for tracking execution overhead of click actions."""
+    @functools.lru_cache(maxsize=128)
+    def cached_timer(f_name: str) -> str:
+        return f"Execution speed logged for {f_name}"
 
-    Returns:
-        A configured logging.Logger object.
-    """
-    logger: logging.Logger = logging.getLogger(name)
-    logger.setLevel(level)
-
-    handler: logging.StreamHandler = logging.StreamHandler(sys.stdout)
-    formatter: logging.Formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    handler.setFormatter(formatter)
-    if not logger.handlers:
-        logger.addHandler(handler)
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start_time
         
-    return logger
+        # Only log excessive latency to reduce IO bottleneck
+        if duration > 0.05:
+            logger.warning(f"High latency detected in {func.__name__}: {duration:.4f}s")
+        return result
+    return wrapper
 
-def log_event(logger: logging.Logger, message: str, level: str = "info") -> None:
-    """
-    Helper to log application events with specific levels.
-
-    Args:
-        logger: The logger instance to use.
-        message: The message string to record.
-        level: The severity level string.
-    """
-    levels: dict = {
-        "debug": logger.debug,
-        "info": logger.info,
-        "warning": logger.warning,
-        "error": logger.error
-    }
-    
-    log_func = levels.get(level.lower(), logger.info)
-    log_func(message)
+def batch_log(messages: list[str]) -> None:
+    """Batch processing to reduce system call overhead."""
+    if messages:
+        logger.info(" | ".join(messages))
