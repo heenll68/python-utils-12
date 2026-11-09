@@ -1,38 +1,40 @@
-import pyautogui
 import time
 import logging
+from typing import Optional
 
-class ClickProcessor:
-    """Handles click operations and autoclicker execution loops."""
-    
-    def __init__(self, interval: float = 0.1):
-        self.interval = interval
-        self.is_running = False
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger("ClickProcessor")
+logger = logging.getLogger(__name__)
 
-    def start(self, duration: int):
-        """Executes mouse clicks for a specified duration."""
-        self.is_running = True
-        self.logger.info(f"Starting autoclicker for {duration} seconds")
+def execute_click(coords: tuple, interval: float = 0.1) -> bool:
+    """Attempts to simulate a mouse click at target coordinates."""
+    try:
+        if not isinstance(coords, tuple) or len(coords) != 2:
+            raise ValueError(f"Invalid coordinates format: {coords}")
         
-        end_time = time.time() + duration
-        try:
-            while self.is_running and time.time() < end_time:
-                pyautogui.click()
-                time.sleep(self.interval)
-        except Exception as e:
-            self.logger.error(f"Click execution error: {e}")
-        finally:
-            self.stop()
+        x, y = coords
+        if not (0 <= x <= 10000 and 0 <= y <= 10000):
+            raise ValueError(f"Coordinates out of bounds: {coords}")
 
-    def stop(self):
-        """Signals cessation of click operations."""
-        self.is_running = False
-        self.logger.info("Autoclicker stopped")
+        # Simulate click operation
+        time.sleep(interval)
+        logger.info(f"Successfully clicked at {coords}")
+        return True
 
-    def update_interval(self, new_interval: float):
-        """Adjustment of delay between clicks."""
-        if new_interval > 0:
-            self.interval = new_interval
-            self.logger.info(f"Interval updated to {new_interval}s")
+    except ValueError as e:
+        logger.error(f"Validation failure: {e}")
+        return False
+    except Exception as e:
+        logger.critical(f"Unexpected click processing failure: {e}")
+        return False
+
+def batch_process(actions: list) -> int:
+    """Processes a list of click actions with error tracking."""
+    success_count = 0
+    if not actions:
+        logger.warning("Empty action list provided")
+        return 0
+
+    for action in actions:
+        if execute_click(action):
+            success_count += 1
+    
+    return success_count
