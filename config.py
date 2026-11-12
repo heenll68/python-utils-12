@@ -1,34 +1,79 @@
 import json
 import os
+from typing import Any, Dict
 
-class Config:
-    """Manages autoclicker runtime settings."""
-    DEFAULTS = {
-        "interval": 0.1,
-        "button": "left",
-        "hotkey": "f8",
-        "max_clicks": 0
-    }
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "interval": 0.1,
+    "button": "left",
+    "click_type": "single",
+    "target_location": None,
+    "max_clicks": 0,
+}
 
-    def __init__(self, config_path="config.json"):
-        self.path = config_path
-        self.settings = self.load()
+VALID_BUTTONS = {"left", "right", "middle"}
+VALID_TYPES = {"single", "double"}
 
-    def load(self):
-        if os.path.exists(self.path):
-            try:
-                with open(self.path, "r") as f:
-                    return {**self.DEFAULTS, **json.load(f)}
-            except (json.JSONDecodeError, IOError):
-                pass
-        return self.DEFAULTS.copy()
 
-    def save(self):
+class ConfigError(Exception):
+    """Custom exception raised for invalid autoclicker configuration."""
+    pass
+
+
+class AutoclickerConfig:
+    """Manages and validates configuration settings with edge-case handling."""
+
+    def __init__(self, filepath: str = "config.json") -> None:
+        self.filepath = filepath
+        self.config: Dict[str, Any] = DEFAULT_CONFIG.copy()
+
+    def load(self) -> Dict[str, Any]:
+        """Loads config file, handling missing or corrupted files gracefully."""
+        if not os.path.exists(self.filepath):
+            self.save()
+            return self.config
+
         try:
-            with open(self.path, "w") as f:
-                json.dump(self.settings, f, indent=4)
-        except IOError as e:
-            print(f"Configuration save failure: {e}")
+            with open(self.filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    self.config.update(data)
+        except (json.JSONDecodeError, PermissionError, OSError):
+            # Fallback to defaults on corrupted file or read failure
+            self.config = DEFAULT_CONFIG.copy()
 
-    def get(self, key):
-        return self.settings.get(key, self.DEFAULTS.get(key))
+        self.sanitize()
+        return self.config
+
+    def sanitize(self) -> None:
+        """Sanitizes configuration values and handles invalid or out-of-bounds parameters."""
+        # Sanitize click interval
+        try:
+            interval = float(self.config.get("interval", 0.1))
+            self.config["interval"] = max(0.001, interval)
+        except (ValueError, TypeError):
+            self.config["interval"] = 0.1
+
+        # Sanitize click button
+        if self.config.get("button") not in VALID_BUTTONS:
+            self.config["button"] = "left"
+
+        # Sanitize click type
+        if self.config.get("click_type") not in VALID_TYPES:
+            self.config["click_type"] = "single"
+
+        # Sanitize coordinate edge cases (negative or invalid tuple)
+        loc = self.config.get("target_location")
+        if loc is not None:
+            if not isinstance(loc, (list, tuple)) or len(loc) != 2:
+                self.config["target_location"] = None
+            elif not all(isinstance(val, int) and val >= 0 for val in loc):
+                self.config["target_location"] = None
+
+    def save(self) -> bool:
+        """Saves current validated configuration to file."""
+        try:
+            with open(self.filepath, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=4)
+            return True
+        except OSError:
+            return False
