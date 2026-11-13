@@ -1,16 +1,19 @@
-# python-utils-12: Advanced Python Autoclicker
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-`python-utils-12` is a high-performance, cross-platform autoclicker designed to streamline repetitive desktop tasks with minimal CPU overhead. It utilizes low-level system hooks to provide reliable input automation for Windows, macOS, and Linux environments.
+# python-utils-12
 
-### Features
-*   **Dynamic CPS Control:** Precision-adjust your clicks per second (CPS) via an intuitive CLI interface.
-*   **Smart Hotkeys:** Global toggle functionality allows you to start or stop automation instantly, even when the terminal is unfocused.
-*   **Variable Click Modes:** Supports left, right, and middle mouse button emulation with adjustable randomized delays to mimic human interaction.
-*   **Minimalist Architecture:** Built on lightweight dependencies (`pynput`) to ensure high stability and negligible system impact.
+`python-utils-12` is a high-performance, lightweight mouse automation utility engineered for high-frequency clicking and macro execution. Built in Python, it delivers precise click-timing controls alongside global hotkey listeners for seamless background operation.
 
-### Installation
+## Features
 
-Ensure you have Python 3.8+ installed. Clone the repository and install the required dependencies:
+* **Sub-Millisecond Precision:** Dynamic click-rate configuration supporting 1 to 1,000+ clicks per second (CPS) with optional micro-jitter to mimic human input patterns.
+* **Global Hotkey Binds:** Instant start, pause, and emergency kill-switch controls active across all system windows.
+* **Coordinate Targeting:** Support for locked-position clicking, relative offset sequences, and active cursor tracking modes.
+* **Low System Overhead:** Native C-type event dispatching via `pynput` ensuring near-zero CPU and RAM impact during continuous loops.
+
+## Installation
+
+Clone the repository and install the required dependencies:
 
 ```bash
 git clone https://github.com/Developer/python-utils-12.git
@@ -18,22 +21,27 @@ cd python-utils-12
 pip install -r requirements.txt
 ```
 
-### Usage
+## Quick Start
 
-Run the utility directly from your terminal. You can define the click interval (in seconds) via the `--interval` flag:
+Run the autoclicker via CLI with standard parameters:
 
 ```bash
-# Example: Click once every 0.5 seconds
-python main.py --interval 0.5
+python main.py --cps 50 --button left --hotkey f6
 ```
 
-**Hotkeys:**
-*   **F6:** Start/Resume automation.
-*   **F7:** Stop automation.
-*   **Ctrl+C:** Exit the application.
+Or import the module directly into your Python scripts:
 
-### License
+```python
+from python_utils_12 import ClickerEngine
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+# Initialize engine: 100 CPS on left mouse button
+engine = ClickerEngine(cps=100, button="left", randomized=True)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+# Register F6 as the toggle key and start background listener
+engine.set_hotkey("f6")
+engine.start_listener()
+```
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for full details.
