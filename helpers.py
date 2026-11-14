@@ -1,32 +1,26 @@
-import logging
+import time
+import pyautogui
+from typing import Tuple
 
-logger = logging.getLogger(__name__)
+def get_mouse_position() -> Tuple[int, int]:
+    """Returns current (x, y) coordinates of the mouse."""
+    return pyautogui.position()
 
-def validate_click_params(interval, duration):
-    """Ensures click parameters are within safe bounds."""
-    try:
-        val_interval = float(interval)
-        val_duration = float(duration)
+def safe_click(x: int, y: int, interval: float = 0.1) -> None:
+    """Moves to coordinates and performs a click with a safety delay."""
+    pyautogui.moveTo(x, y)
+    time.sleep(interval)
+    pyautogui.click()
 
-        if val_interval < 0.01:
-            raise ValueError("Interval must be at least 0.01 seconds.")
-        if val_duration < 0:
-            raise ValueError("Duration cannot be negative.")
+def get_screen_resolution() -> Tuple[int, int]:
+    """Returns the current primary screen resolution."""
+    return pyautogui.size()
 
-        return True, (val_interval, val_duration)
-    except (ValueError, TypeError) as e:
-        logger.error(f"Invalid input parameters: {e}")
-        return False, None
+def perform_drag(start: Tuple[int, int], end: Tuple[int, int], duration: float = 0.5) -> None:
+    """Drags the mouse from start to end coordinates."""
+    pyautogui.moveTo(start[0], start[1])
+    pyautogui.dragTo(end[0], end[1], duration=duration, button='left')
 
-def sanitize_coordinates(x, y):
-    """Normalizes coordinate inputs to integers."""
-    try:
-        return int(x), int(y)
-    except (ValueError, TypeError):
-        logger.warning(f"Invalid coordinates ({x}, {y}), defaulting to (0, 0)")
-        return 0, 0
-
-def is_valid_process_state(state_dict):
-    """Checks integrity of the processing dictionary."""
-    required = ['active', 'interval', 'duration']
-    return all(key in state_dict for key in required) and isinstance(state_dict['active'], bool)
+def wait_for_seconds(seconds: float) -> None:
+    """Blocking sleep wrapper for application throttling."""
+    time.sleep(seconds)
