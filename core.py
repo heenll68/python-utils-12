@@ -1,35 +1,60 @@
+import ctypes
+import sys
 import time
-import pyautogui
-from typing import Optional
+from typing import Callable, Optional
 
-class AutoClicker:
-    """Automates mouse clicks at defined intervals."""
+class ClickEngine:
+    """High-precision click execution engine optimized for low latency and minimal CPU drift."""
 
-    def __init__(self, interval: float = 1.0, button: str = 'left') -> None:
-        """Initialize the clicker with delay and button configuration."""
-        self.interval: float = interval
-        self.button: str = button
-        self._running: bool = False
+    def __init__(self, interval: float = 0.01) -> None:
+        self.interval = max(0.0001, interval)
+        self._is_running = False
+        self._setup_precision_timer()
 
-    def start(self, duration: Optional[float] = None) -> None:
-        """Begin the clicking loop for a specific duration."""
-        self._running = True
-        start_time: float = time.time()
+    def _setup_precision_timer(self) -> None:
+        """Enable high-resolution timer on Windows to reduce sleep latency drift."""
+        if sys.platform == "win32":
+            try:
+                ctypes.windll.winmm.timeBeginPeriod(1)
+            except Exception:
+                pass
 
-        while self._running:
-            pyautogui.click(button=self.button)
-            time.sleep(self.interval)
+    def _cleanup_precision_timer(self) -> None:
+        """Restore default system timer resolution on Windows."""
+        if sys.platform == "win32":
+            try:
+                ctypes.windll.winmm.timeEndPeriod(1)
+            except Exception:
+                pass
 
-            if duration and (time.time() - start_time) >= duration:
-                break
+    def run(self, click_func: Callable[[], None], max_clicks: Optional[int] = None) -> int:
+        """Executes click function with tight timing synchronization."""
+        self._is_running = True
+        total_clicks = 0
+        next_tick = time.perf_counter()
+
+        try:
+            while self._is_running:
+                if max_clicks is not None and total_clicks >= max_clicks:
+                    break
+
+                click_func()
+                total_clicks += 1
+
+                next_tick += self.interval
+                sleep_time = next_tick - time.perf_counter()
+
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                else:
+                    # Resynchronize next_tick if loop fell behind to avoid burst catch-up
+                    next_tick = time.perf_counter()
+        finally:
+            self._is_running = False
+            self._cleanup_precision_timer()
+
+        return total_clicks
 
     def stop(self) -> None:
-        """Halt the clicking loop."""
-        self._running = False
-
-if __name__ == '__main__':
-    clicker = AutoClicker(interval=0.5)
-    try:
-        clicker.start(duration=5.0)
-    except KeyboardInterrupt:
-        clicker.stop()
+        """Signals execution loop to terminate gracefully."""
+        self._is_running = False
