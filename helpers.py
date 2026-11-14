@@ -1,29 +1,32 @@
-import time
-import pyautogui
-import random
+import logging
 
-def safe_click(x: int, y: int, interval: float = 0.05) -> None:
-    """Performs a mouse click at coordinates with a randomized delay."""
-    delay = interval + random.uniform(0, 0.02)
-    time.sleep(delay)
-    pyautogui.click(x, y)
+logger = logging.getLogger(__name__)
 
-def wait_for_ready(seconds: int = 1) -> None:
-    """Pauses execution to allow user prep time."""
-    print(f"Starting in {seconds} seconds...")
-    time.sleep(seconds)
+def validate_click_params(interval, duration):
+    """Ensures click parameters are within safe bounds."""
+    try:
+        val_interval = float(interval)
+        val_duration = float(duration)
 
-def get_random_offset(radius: int = 5) -> tuple:
-    """Generates small coordinate variations to evade detection."""
-    dx = random.randint(-radius, radius)
-    dy = random.randint(-radius, radius)
-    return dx, dy
+        if val_interval < 0.01:
+            raise ValueError("Interval must be at least 0.01 seconds.")
+        if val_duration < 0:
+            raise ValueError("Duration cannot be negative.")
 
-def perform_humanized_click(x: int, y: int) -> None:
-    """Click with positional jitter to mimic human behavior."""
-    dx, dy = get_random_offset()
-    safe_click(x + dx, y + dy)
+        return True, (val_interval, val_duration)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid input parameters: {e}")
+        return False, None
 
-def toggle_clicker_state(current_state: bool) -> bool:
-    """Flips the active state of the autoclicker."""
-    return not current_state
+def sanitize_coordinates(x, y):
+    """Normalizes coordinate inputs to integers."""
+    try:
+        return int(x), int(y)
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid coordinates ({x}, {y}), defaulting to (0, 0)")
+        return 0, 0
+
+def is_valid_process_state(state_dict):
+    """Checks integrity of the processing dictionary."""
+    required = ['active', 'interval', 'duration']
+    return all(key in state_dict for key in required) and isinstance(state_dict['active'], bool)
