@@ -2,38 +2,42 @@ import time
 import threading
 from typing import Callable
 
-class ClickProcessor:
-    """Optimized click engine using high-precision thread loops."""
-    
-    def __init__(self, interval: float, callback: Callable):
+class ClickEngine:
+    """Optimized execution loop for high-frequency input simulation."""
+    def __init__(self, interval: float, action: Callable):
         self.interval = interval
-        self.callback = callback
+        self.action = action
         self._running = False
         self._thread = None
 
-    def _run(self):
-        """Executes loop with reduced wake-up jitter."""
-        next_time = time.perf_counter()
+    def _run_loop(self):
+        """Executes action with minimal latency overhead."""
+        # Pre-cache interval for micro-optimization
+        delta = self.interval
+        last_time = time.perf_counter()
+
         while self._running:
-            self.callback()
-            next_time += self.interval
-            sleep_duration = next_time - time.perf_counter()
-            if sleep_duration > 0:
-                time.sleep(sleep_duration)
+            self.action()
+            
+            # Calculate precise sleep duration to combat drift
+            elapsed = time.perf_counter() - last_time
+            sleep_time = delta - elapsed
+            
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            
+            last_time = time.perf_counter()
 
     def start(self):
-        """Spawns daemon thread for click execution."""
+        """Initiates processing thread with thread-safe toggle."""
         if not self._running:
             self._running = True
-            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread = threading.Thread(target=self._run_loop, daemon=True)
             self._thread.start()
 
     def stop(self):
-        """Signals thread termination for resource cleanup."""
+        """Terminates the execution loop."""
         self._running = False
         if self._thread:
             self._thread.join()
-
-def execute_optimized_click():
-    """Placeholder for low-level system input interaction."""
-    pass
+            self._thread = None
