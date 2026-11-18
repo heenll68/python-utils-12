@@ -1,31 +1,37 @@
+import time
+import functools
 import logging
 
-# Configure logger for module usage
 logger = logging.getLogger(__name__)
 
-def validate_click_settings(interval, duration, button):
-    """Ensures configuration values are within safe, operable bounds."""
-    if not isinstance(interval, (int, float)) or interval < 0.01:
-        logger.error(f"Invalid interval: {interval}. Must be >= 0.01.")
-        return False
+def retry_network_op(retries=3, delay=1.0, backoff=2.0):
+    """Decorator for retrying network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            last_exception = None
 
-    if not isinstance(duration, (int, float)) or duration < 0:
-        logger.error(f"Invalid duration: {duration}. Must be >= 0.")
-        return False
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            
+            logger.error(f"Operation failed after {retries} attempts.")
+            raise last_exception
+        return wrapper
+    return decorator
 
-    if button not in ['left', 'right', 'middle']:
-        logger.error(f"Invalid button: {button}. Must be left, right, or middle.")
-        return False
-
-    return True
-
-def sanitize_coordinates(x, y):
-    """Validates that target coordinates are non-negative integers."""
-    try:
-        x, y = int(x), int(y)
-        if x < 0 or y < 0:
-            raise ValueError("Coordinates cannot be negative")
-        return x, y
-    except (ValueError, TypeError):
-        logger.warning(f"Invalid coordinates: ({x}, {y}). Using default (0, 0).")
-        return 0, 0
+def validate_connection_status(func):
+    """Validator ensuring target is reachable before clicking actions."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Simulation of reachability check
+        if not hasattr(args[0], 'is_connected') or not args[0].is_connected():
+            raise ConnectionError("Network interface not ready for click input")
+        return func(*args, **kwargs)
+    return wrapper
