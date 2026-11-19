@@ -1,26 +1,30 @@
-import time
-import pyautogui
-from typing import Tuple
+def validate_click_settings(interval, duration):
+    """
+    Validates user input parameters for the autoclicker loop.
+    """
+    if not isinstance(interval, (int, float)) or not isinstance(duration, (int, float)):
+        return False, "Input parameters must be numeric"
+    
+    if interval < 0.01:
+        return False, "Interval too low, must be at least 0.01 seconds"
+        
+    if duration < 0:
+        return False, "Duration cannot be negative"
+        
+    return True, "Success"
 
-def get_mouse_position() -> Tuple[int, int]:
-    """Returns current (x, y) coordinates of the mouse."""
-    return pyautogui.position()
-
-def safe_click(x: int, y: int, interval: float = 0.1) -> None:
-    """Moves to coordinates and performs a click with a safety delay."""
-    pyautogui.moveTo(x, y)
-    time.sleep(interval)
-    pyautogui.click()
-
-def get_screen_resolution() -> Tuple[int, int]:
-    """Returns the current primary screen resolution."""
-    return pyautogui.size()
-
-def perform_drag(start: Tuple[int, int], end: Tuple[int, int], duration: float = 0.5) -> None:
-    """Drags the mouse from start to end coordinates."""
-    pyautogui.moveTo(start[0], start[1])
-    pyautogui.dragTo(end[0], end[1], duration=duration, button='left')
-
-def wait_for_seconds(seconds: float) -> None:
-    """Blocking sleep wrapper for application throttling."""
-    time.sleep(seconds)
+def process_input_validation(raw_interval, raw_duration):
+    """
+    Interface to parse and validate autoclicker parameters.
+    """
+    try:
+        interval = float(raw_interval)
+        duration = float(raw_duration)
+    except (ValueError, TypeError):
+        return None, "Invalid numeric input format"
+        
+    is_valid, message = validate_click_settings(interval, duration)
+    if not is_valid:
+        return None, message
+        
+    return (interval, duration), "Valid settings initialized"
