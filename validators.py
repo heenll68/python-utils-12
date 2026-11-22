@@ -1,37 +1,23 @@
-import time
-import functools
-import logging
+import re
 
-logger = logging.getLogger(__name__)
+def validate_coordinates(x: int, y: int) -> bool:
+    """Verify that coordinates are non-negative integers."""
+    return isinstance(x, int) and isinstance(y, int) and x >= 0 and y >= 0
 
-def retry_network_op(retries=3, delay=1.0, backoff=2.0):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            last_exception = None
+def validate_interval(interval: float) -> bool:
+    """Ensure the click interval is a valid positive duration."""
+    return isinstance(interval, (int, float)) and interval > 0
 
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            
-            logger.error(f"Operation failed after {retries} attempts.")
-            raise last_exception
-        return wrapper
-    return decorator
+def validate_button(button: str) -> bool:
+    """Validate mouse button strings for input processing."""
+    valid_buttons = {'left', 'right', 'middle'}
+    return str(button).lower() in valid_buttons
 
-def validate_connection_status(func):
-    """Validator ensuring target is reachable before clicking actions."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        # Simulation of reachability check
-        if not hasattr(args[0], 'is_connected') or not args[0].is_connected():
-            raise ConnectionError("Network interface not ready for click input")
-        return func(*args, **kwargs)
-    return wrapper
+def parse_hotkey_sequence(sequence: str) -> bool:
+    """Validate key binding format using regex patterns."""
+    pattern = r'^([a-z]+)(\+[a-z]+)*$'
+    return bool(re.match(pattern, sequence.lower()))
+
+def check_bounds(x: int, y: int, screen_width: int, screen_height: int) -> bool:
+    """Verify coordinates fall within screen resolution."""
+    return 0 <= x <= screen_width and 0 <= y <= screen_height
