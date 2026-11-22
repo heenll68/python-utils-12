@@ -1,79 +1,37 @@
-import json
 import os
-from typing import Any, Dict
+import json
+import logging
 
-DEFAULT_CONFIG: Dict[str, Any] = {
+# Default configuration settings
+DEFAULT_CONFIG = {
     "interval": 0.1,
     "button": "left",
-    "click_type": "single",
-    "target_location": None,
-    "max_clicks": 0,
+    "repeat": -1
 }
 
-VALID_BUTTONS = {"left", "right", "middle"}
-VALID_TYPES = {"single", "double"}
+def load_config(filepath: str) -> dict:
+    """Load configuration from a JSON file with validation."""
+    if not os.path.exists(filepath):
+        logging.warning(f"Config file {filepath} not found, using defaults")
+        return DEFAULT_CONFIG
 
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # Ensure required types for core autoclicker logic
+            if not isinstance(data.get("interval", 0.1), (int, float)):
+                raise ValueError("Interval must be a numeric value")
+            return {**DEFAULT_CONFIG, **data}
+    except (json.JSONDecodeError, ValueError, PermissionError) as e:
+        logging.error(f"Failed to load config: {e}. Falling back to defaults")
+        return DEFAULT_CONFIG
 
-class ConfigError(Exception):
-    """Custom exception raised for invalid autoclicker configuration."""
-    pass
-
-
-class AutoclickerConfig:
-    """Manages and validates configuration settings with edge-case handling."""
-
-    def __init__(self, filepath: str = "config.json") -> None:
-        self.filepath = filepath
-        self.config: Dict[str, Any] = DEFAULT_CONFIG.copy()
-
-    def load(self) -> Dict[str, Any]:
-        """Loads config file, handling missing or corrupted files gracefully."""
-        if not os.path.exists(self.filepath):
-            self.save()
-            return self.config
-
-        try:
-            with open(self.filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    self.config.update(data)
-        except (json.JSONDecodeError, PermissionError, OSError):
-            # Fallback to defaults on corrupted file or read failure
-            self.config = DEFAULT_CONFIG.copy()
-
-        self.sanitize()
-        return self.config
-
-    def sanitize(self) -> None:
-        """Sanitizes configuration values and handles invalid or out-of-bounds parameters."""
-        # Sanitize click interval
-        try:
-            interval = float(self.config.get("interval", 0.1))
-            self.config["interval"] = max(0.001, interval)
-        except (ValueError, TypeError):
-            self.config["interval"] = 0.1
-
-        # Sanitize click button
-        if self.config.get("button") not in VALID_BUTTONS:
-            self.config["button"] = "left"
-
-        # Sanitize click type
-        if self.config.get("click_type") not in VALID_TYPES:
-            self.config["click_type"] = "single"
-
-        # Sanitize coordinate edge cases (negative or invalid tuple)
-        loc = self.config.get("target_location")
-        if loc is not None:
-            if not isinstance(loc, (list, tuple)) or len(loc) != 2:
-                self.config["target_location"] = None
-            elif not all(isinstance(val, int) and val >= 0 for val in loc):
-                self.config["target_location"] = None
-
-    def save(self) -> bool:
-        """Saves current validated configuration to file."""
-        try:
-            with open(self.filepath, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=4)
-            return True
-        except OSError:
-            return False
+def save_config(filepath: str, config: dict) -> bool:
+    """Persist configuration to disk with error safety."""
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(config, f, indent=4)
+        return True
+    except (IOError, TypeError) as e:
+        logging.error(f"Configuration save failure: {e}")
+        return False
