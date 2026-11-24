@@ -1,23 +1,40 @@
-import re
+from typing import Union, Tuple
 
 def validate_coordinates(x: int, y: int) -> bool:
-    """Verify that coordinates are non-negative integers."""
-    return isinstance(x, int) and isinstance(y, int) and x >= 0 and y >= 0
+    """Verify that coordinates are within a valid screen range.
 
-def validate_interval(interval: float) -> bool:
-    """Ensure the click interval is a valid positive duration."""
+    Args:
+        x: Horizontal screen coordinate.
+        y: Vertical screen coordinate.
+
+    Returns:
+        True if coordinates are non-negative, False otherwise.
+    """
+    return x >= 0 and y >= 0
+
+def validate_interval(interval: Union[int, float]) -> bool:
+    """Ensure the click interval is a positive value.
+
+    Args:
+        interval: Time in seconds between clicks.
+
+    Returns:
+        True if interval is greater than zero, False otherwise.
+    """
     return isinstance(interval, (int, float)) and interval > 0
 
-def validate_button(button: str) -> bool:
-    """Validate mouse button strings for input processing."""
-    valid_buttons = {'left', 'right', 'middle'}
-    return str(button).lower() in valid_buttons
+def sanitize_bounds(x: int, y: int, max_x: int, max_y: int) -> Tuple[int, int]:
+    """Clamp coordinates to ensure they remain inside screen bounds.
 
-def parse_hotkey_sequence(sequence: str) -> bool:
-    """Validate key binding format using regex patterns."""
-    pattern = r'^([a-z]+)(\+[a-z]+)*$'
-    return bool(re.match(pattern, sequence.lower()))
+    Args:
+        x: Targeted x coordinate.
+        y: Targeted y coordinate.
+        max_x: Maximum allowed horizontal width.
+        max_y: Maximum allowed vertical height.
 
-def check_bounds(x: int, y: int, screen_width: int, screen_height: int) -> bool:
-    """Verify coordinates fall within screen resolution."""
-    return 0 <= x <= screen_width and 0 <= y <= screen_height
+    Returns:
+        Tuple of clamped (x, y) coordinates.
+    """
+    clamped_x = max(0, min(x, max_x))
+    clamped_y = max(0, min(y, max_y))
+    return clamped_x, clamped_y
