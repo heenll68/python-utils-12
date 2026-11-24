@@ -1,34 +1,23 @@
-import platform
+from typing import Final
 
-# Operating system identification
-IS_WINDOWS = platform.system() == "Windows"
-IS_MACOS = platform.system() == "Darwin"
-IS_LINUX = platform.system() == "Linux"
+# Timing constraints for click intervals
+MIN_INTERVAL: Final[float] = 0.01
+MAX_INTERVAL: Final[float] = 60.0
+DEFAULT_INTERVAL: Final[float] = 0.1
 
-# Standard button identifiers for input simulation
-LEFT_BUTTON = "left"
-RIGHT_BUTTON = "right"
-MIDDLE_BUTTON = "middle"
+# Keyboard and mouse constants
+CLICK_BUTTON_LEFT: Final[str] = "left"
+CLICK_BUTTON_RIGHT: Final[str] = "right"
+CLICK_BUTTON_MIDDLE: Final[str] = "middle"
 
-# Default operation constraints
-DEFAULT_CLICK_INTERVAL = 0.1
-MAX_CLICK_INTERVAL = 60.0
-MIN_CLICK_INTERVAL = 0.001
+# Application state defaults
+DEFAULT_STOP_KEY: Final[str] = "f8"
+MAX_CLICK_LIMIT: Final[int] = 1_000_000
 
-# Key constants for hotkey registration
-KEY_START_STOP = "f6"
-KEY_EXIT = "f7"
+# UI layout dimensions
+WINDOW_WIDTH: Final[int] = 400
+WINDOW_HEIGHT: Final[int] = 300
 
-# GUI configuration placeholders
-DEFAULT_WINDOW_TITLE = "Python Utils 12 - Autoclicker"
-DEFAULT_WINDOW_SIZE = "300x200"
-
-# Valid button choices for dropdown selections
-VALID_BUTTONS = [LEFT_BUTTON, RIGHT_BUTTON, MIDDLE_BUTTON]
-
-# Configuration file path
-CONFIG_FILE_PATH = "settings.json"
-
-# Logging format constants
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+def get_valid_buttons() -> list[str]:
+    """Returns the list of supported mouse button strings."""
+    return [CLICK_BUTTON_LEFT, CLICK_BUTTON_RIGHT, CLICK_BUTTON_MIDDLE]
