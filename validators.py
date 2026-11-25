@@ -1,40 +1,30 @@
-from typing import Union, Tuple
+import time
+from functools import lru_cache
 
-def validate_coordinates(x: int, y: int) -> bool:
-    """Verify that coordinates are within a valid screen range.
+@lru_cache(maxsize=128)
+def validate_click_interval(interval: float) -> bool:
+    """Checks if interval is within safe hardware constraints."""
+    return 0.001 <= interval <= 60.0
 
-    Args:
-        x: Horizontal screen coordinate.
-        y: Vertical screen coordinate.
+def batch_validate_coordinates(coords: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Filters out-of-bounds coordinates using list comprehension speed."""
+    return [c for c in coords if 0 <= c[0] <= 1920 and 0 <= c[1] <= 1080]
 
-    Returns:
-        True if coordinates are non-negative, False otherwise.
-    """
-    return x >= 0 and y >= 0
+def throttle_check(last_run: float, threshold: float) -> bool:
+    """Fast calculation for event frequency limiting."""
+    return (time.perf_counter() - last_run) >= threshold
 
-def validate_interval(interval: Union[int, float]) -> bool:
-    """Ensure the click interval is a positive value.
+class ClickValidator:
+    """Optimized validation state for high-frequency input streams."""
+    def __init__(self):
+        self.last_validated = 0.0
+        self._cache = {}
 
-    Args:
-        interval: Time in seconds between clicks.
-
-    Returns:
-        True if interval is greater than zero, False otherwise.
-    """
-    return isinstance(interval, (int, float)) and interval > 0
-
-def sanitize_bounds(x: int, y: int, max_x: int, max_y: int) -> Tuple[int, int]:
-    """Clamp coordinates to ensure they remain inside screen bounds.
-
-    Args:
-        x: Targeted x coordinate.
-        y: Targeted y coordinate.
-        max_x: Maximum allowed horizontal width.
-        max_y: Maximum allowed vertical height.
-
-    Returns:
-        Tuple of clamped (x, y) coordinates.
-    """
-    clamped_x = max(0, min(x, max_x))
-    clamped_y = max(0, min(y, max_y))
-    return clamped_x, clamped_y
+    def is_safe_frequency(self, frequency: int) -> bool:
+        if frequency in self._cache:
+            return self._cache[frequency]
+        
+        # Bounds validation logic
+        is_valid = 1 <= frequency <= 1000
+        self._cache[frequency] = is_valid
+        return is_valid
