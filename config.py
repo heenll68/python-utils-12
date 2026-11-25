@@ -1,37 +1,31 @@
-import os
 import json
-import logging
+import os
+from typing import Dict, Any
 
-# Default configuration settings
 DEFAULT_CONFIG = {
     "interval": 0.1,
     "button": "left",
-    "repeat": -1
+    "hotkey": "f6",
+    "repeat": True
 }
 
-def load_config(filepath: str) -> dict:
-    """Load configuration from a JSON file with validation."""
+def load_config(filepath: str = "config.json") -> Dict[str, Any]:
+    """Loads configuration from json file with fallback defaults."""
+    config = DEFAULT_CONFIG.copy()
+    
     if not os.path.exists(filepath):
-        logging.warning(f"Config file {filepath} not found, using defaults")
-        return DEFAULT_CONFIG
+        return config
 
     try:
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            # Ensure required types for core autoclicker logic
-            if not isinstance(data.get("interval", 0.1), (int, float)):
-                raise ValueError("Interval must be a numeric value")
-            return {**DEFAULT_CONFIG, **data}
-    except (json.JSONDecodeError, ValueError, PermissionError) as e:
-        logging.error(f"Failed to load config: {e}. Falling back to defaults")
-        return DEFAULT_CONFIG
+        with open(filepath, "r") as f:
+            user_config = json.load(f)
+            config.update(user_config)
+    except (json.JSONDecodeError, IOError):
+        pass
+        
+    return config
 
-def save_config(filepath: str, config: dict) -> bool:
-    """Persist configuration to disk with error safety."""
-    try:
-        with open(filepath, 'w') as f:
-            json.dump(config, f, indent=4)
-        return True
-    except (IOError, TypeError) as e:
-        logging.error(f"Configuration save failure: {e}")
-        return False
+def save_config(config: Dict[str, Any], filepath: str = "config.json") -> None:
+    """Persists current configuration to json file."""
+    with open(filepath, "w") as f:
+        json.dump(config, f, indent=4)
