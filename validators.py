@@ -1,30 +1,38 @@
+import functools
 import time
-from functools import lru_cache
+from typing import Callable, Any
 
-@lru_cache(maxsize=128)
-def validate_click_interval(interval: float) -> bool:
-    """Checks if interval is within safe hardware constraints."""
-    return 0.001 <= interval <= 60.0
+# Cache click validation results to reduce overhead in tight loops
+_validation_cache = {}
 
-def batch_validate_coordinates(coords: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    """Filters out-of-bounds coordinates using list comprehension speed."""
-    return [c for c in coords if 0 <= c[0] <= 1920 and 0 <= c[1] <= 1080]
+def lru_cache_with_ttl(seconds: int = 1):
+    def decorator(func: Callable):
+        cache = {}
 
-def throttle_check(last_run: float, threshold: float) -> bool:
-    """Fast calculation for event frequency limiting."""
-    return (time.perf_counter() - last_run) >= threshold
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            now = time.time()
+            key = (args, tuple(kwargs.items()))
+            if key in cache:
+                result, timestamp = cache[key]
+                if now - timestamp < seconds:
+                    return result
+            result = func(*args, **kwargs)
+            cache[key] = (result, now)
+            return result
+        return wrapper
+    return decorator
 
-class ClickValidator:
-    """Optimized validation state for high-frequency input streams."""
-    def __init__(self):
-        self.last_validated = 0.0
-        self._cache = {}
+@lru_cache_with_ttl(seconds=0.5)
+def validate_click_bounds(x: int, y: int, screen_width: int, screen_height: int) -> bool:
+    """Ensures coordinates stay within current display bounds."""
+    return 0 <= x < screen_width and 0 <= y < screen_height
 
-    def is_safe_frequency(self, frequency: int) -> bool:
-        if frequency in self._cache:
-            return self._cache[frequency]
-        
-        # Bounds validation logic
-        is_valid = 1 <= frequency <= 1000
-        self._cache[frequency] = is_valid
-        return is_valid
+def sanitize_interval(interval: float) -> float:
+    """Enforce a minimum safe interval for CPU efficiency."""
+    return max(0.001, float(interval))
+
+# Validation batch handler for bulk input checks
+def validate_batch(coordinates: list, width: int, height: int) -> list:
+    """Filter invalid coordinates using cached validation."""
+    return [coord for coord in coordinates if validate_click_bounds(coord[0], coord[1], width, height)]
