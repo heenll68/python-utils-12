@@ -1,31 +1,34 @@
 import time
-import pyautogui
-from typing import Optional
+import logging
 
-class ClickProcessor:
-    """Handles click execution logic with interval management."""
+def validate_inputs(clicks, interval):
+    """Ensures click count and interval are positive numbers."""
+    if not isinstance(clicks, int) or clicks <= 0:
+        raise ValueError("Click count must be a positive integer")
+    if not isinstance(interval, (int, float)) or interval < 0:
+        raise ValueError("Interval must be a non-negative number")
 
-    def __init__(self, interval: float = 0.1):
-        self.interval = interval
-        self.running = False
+def run_autoclicker(clicks: int, interval: float):
+    """Main processing loop for executing clicks."""
+    try:
+        validate_inputs(clicks, interval)
+        
+        logging.info(f"Starting autoclicker: {clicks} clicks at {interval}s interval")
+        
+        for i in range(clicks):
+            # Simulating click action
+            print(f"Click action triggered: {i + 1}/{clicks}")
+            
+            if interval > 0:
+                time.sleep(interval)
+                
+    except ValueError as e:
+        logging.error(f"Validation failure: {e}")
+    except KeyboardInterrupt:
+        logging.info("Process interrupted by user")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
 
-    def start(self) -> None:
-        """Starts the click loop."""
-        self.running = True
-        while self.running:
-            pyautogui.click()
-            time.sleep(self.interval)
-
-    def stop(self) -> None:
-        """Terminates the click loop safely."""
-        self.running = False
-
-    def update_interval(self, new_interval: float) -> None:
-        """Updates click frequency safely."""
-        if new_interval > 0:
-            self.interval = new_interval
-
-    @staticmethod
-    def get_mouse_position() -> tuple:
-        """Retrieves current coordinates."""
-        return pyautogui.position()
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    run_autoclicker(5, 0.5)
